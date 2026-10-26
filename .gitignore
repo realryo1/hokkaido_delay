@@ -1,0 +1,5 @@
+worker/node_modules/
+worker/.wrangler/
+
+# 手元確認用（worker/scripts/collect-local.mjs の出力）
+website/_local.json

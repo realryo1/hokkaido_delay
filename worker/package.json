@@ -1,0 +1,13 @@
+{
+  "name": "hokkaido-delay-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "collect": "node scripts/collect-local.mjs",
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

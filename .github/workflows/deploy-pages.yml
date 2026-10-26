@@ -1,0 +1,47 @@
+name: Deploy website to GitHub Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # index.html から読み込む自サイトの JS / CSS に ?v=（デプロイ時刻）を付ける。
+      # 読み込み直したとき、ブラウザが直前のページで読み込んだ古いファイル（max-age=600 の間はメモリ上に残る）を使い回さないようにする
+      - name: Version asset URLs
+        run: |
+          v="$(date -u '+%Y%m%d%H%M%S')"
+          sed -i -E "s/(src|href)=\"([a-z-]+\.(css|js))\"/\1=\"\2?v=${v}\"/g" website/index.html
+          grep -o -E "(src|href)=\"[a-z.-]+\?v=[0-9]+\"" website/index.html
+
+      # 公開するファイルだけ JS / CSS を圧縮する（リポジトリのソースは読みやすいまま）
+      - name: Minify JS / CSS
+        run: npx -y esbuild@0.25.10 website/*.js website/*.css --minify --charset=utf8 --outdir=website --allow-overwrite --log-level=warning
+
+      - name: Upload website directory
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

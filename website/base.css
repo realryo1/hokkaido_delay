@@ -1,0 +1,65 @@
+/* 配色・フォント・背景・フッター。姉妹プロジェクトのSNOWMIKU2027非公式カレンダー（sm27calendar の website/style.css）から、
+   このページで使う部分だけを写したもの。見た目をそろえるため、値を変えるときは向こうと合わせる */
+:root {
+  --col-ink: #4F458F;
+  --col-ink-primary: #DD67E2;
+  --col-paper: #FFFFFF;
+  --col-paper-muted: #F8F8F8;
+  --col-primary: #e9a1eb;
+  --col-primary-light: #F7BFFF;
+  --col-primary-dark: #873890;
+  --col-secondary: #9185DE;
+  --col-secondary-light: #BFB5FF;
+  --col-secondary-lighter: #f4f1ff;
+  --col-secondary-dark: #6E63B3;
+  --col-link: #D08100;
+  --col-link-light: #ffc567;
+  --col-link-lighter: #ffe7b8;
+  --col-gold-dark: #736B32;
+  --col-gold: #D9CA5E;
+  --col-fan: #C2354F;
+  --brand-gradient: linear-gradient(135deg, #9185de 0%, #e9a1eb 100%);
+
+  --font-base: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --font-display: "Dela Gothic One", var(--font-base);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; } /* iPhoneで端を越えて引っ張れる（ゴム紐のような）挙動を止める */
+
+body {
+  margin: 0;
+  font-family: var(--font-base);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: .04em;
+  font-feature-settings: "palt";
+  color: var(--col-ink);
+  background: var(--col-secondary-lighter);
+  min-height: 100vh;
+}
+/* 背景のぼかしは画面に固定した別のレイヤーに描く（background-attachment: fixed だと、スクロールのたびに画面全体を描き直すため） */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 10% 0%, var(--col-primary-light) 0, transparent 40%),
+    radial-gradient(circle at 100% 20%, var(--col-secondary-light) 0, transparent 35%);
+  will-change: transform;
+  pointer-events: none;
+}
+
+button { font: inherit; color: inherit; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  padding: 20px 16px 32px;
+  font-size: .75rem;
+  text-align: center;
+  opacity: .8;
+}

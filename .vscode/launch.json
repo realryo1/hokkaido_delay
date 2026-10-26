@@ -1,0 +1,25 @@
+{
+  // F5 で「Deploy: push → GitHub Pages」を実行する（tools/deploy-pages.mjs）
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Deploy: push → GitHub Pages",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/deploy-pages.mjs",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Deploy: 確認のみ（push・起動なし）",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/deploy-pages.mjs",
+      "args": ["--dry-run"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

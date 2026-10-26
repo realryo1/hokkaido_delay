@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "sample": true,
+  "updated_at": "2027-02-06T10:30:00+09:00",
+  "services": {
+    "jr": {
+      "name": "JR北海道",
+      "url": "https://www3.jrhokkaido.co.jp/webunkou/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "source_time": "2027年2月6日 10時28分現在",
+      "items": [
+        { "id": "airport", "name": "快速エアポート", "status": "delay", "tomorrow": "normal", "url": "https://www3.jrhokkaido.co.jp/webunkou/senku.html?id=02" },
+        { "id": "hakochise", "name": "函館線・千歳線（札幌近郊）", "status": "delay", "tomorrow": "normal", "url": "https://www3.jrhokkaido.co.jp/webunkou/senku.html?id=03" },
+        { "id": "gakuen", "name": "学園都市線", "status": "normal", "tomorrow": "normal", "url": "https://www3.jrhokkaido.co.jp/webunkou/senku.html?id=04" },
+        { "id": "express", "name": "特急列車（北斗・カムイ など）", "status": "delay", "tomorrow": "delay", "url": "https://www3.jrhokkaido.co.jp/webunkou/senku.html?id=01" },
+        { "id": "shinkansen", "name": "北海道新幹線", "status": "normal", "tomorrow": "normal", "url": "https://www3.jrhokkaido.co.jp/webunkou/senku.html?id=24" }
+      ]
+    },
+    "subway": {
+      "name": "札幌市営地下鉄",
+      "url": "https://operationstatus.city.sapporo.jp/unkojoho/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "source_time": null,
+      "items": [
+        { "id": "nanboku", "name": "南北線", "status": "normal", "message": "平常運転しています", "url": "https://operationstatus.city.sapporo.jp/unkojoho/" },
+        { "id": "tozai", "name": "東西線", "status": "delay", "message": "遅れが発生しています", "url": "https://operationstatus.city.sapporo.jp/unkojoho/" },
+        { "id": "toho", "name": "東豊線", "status": "normal", "message": "平常運転しています", "url": "https://operationstatus.city.sapporo.jp/unkojoho/" }
+      ]
+    },
+    "airport": {
+      "name": "新千歳空港（国内線）",
+      "url": "https://www.hokkaido-airports.com/ja/new-chitose/airport/fis/",
+      "ok": false,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:15:00+09:00",
+      "source_time": "2027-02-06T10:14:03+0900",
+      "groups": [
+        { "id": "ana", "name": "ANA系（ANA・AIRDO・IBEX ほか）", "status": "delay", "total": 166, "cancelled": 4, "delayed": 9, "diverted": 0, "delayed_30": 6, "done_late": 1 },
+        { "id": "jal", "name": "JAL系（JAL・J-AIR・FDA ほか）", "status": "suspended", "total": 102, "cancelled": 33, "delayed": 5, "diverted": 1, "delayed_30": 4 },
+        { "id": "other", "name": "スカイマーク・LCC ほか", "status": "normal", "total": 98, "cancelled": 0, "delayed": 1, "diverted": 0, "delayed_30": 0 }
+      ],
+      "flights": [
+        { "dir": "departure", "group": "ana", "flight": "ANA0001", "airline": "（サンプル）", "place": "東京", "scheduled": "08:30", "estimated": "09:40", "delay_min": 70, "kind": "done" },
+        { "dir": "departure", "group": "jal", "flight": "JAL0000", "airline": "（サンプル）", "place": "東京", "scheduled": "10:00", "estimated": null, "delay_min": null, "kind": "cancelled" },
+        { "dir": "arrival", "group": "ana", "flight": "ANA0000", "airline": "（サンプル）", "place": "東京", "scheduled": "10:20", "estimated": "11:05", "delay_min": 45, "kind": "delayed" },
+        { "dir": "arrival", "group": "jal", "flight": "JAL0001", "airline": "（サンプル）", "place": "大阪（伊丹）", "scheduled": "10:40", "estimated": null, "delay_min": null, "kind": "diverted" },
+        { "dir": "departure", "group": "ana", "flight": "ADO0000", "airline": "（サンプル）", "place": "東京", "scheduled": "11:00", "estimated": "11:10", "delay_min": 10, "kind": "delayed" },
+        { "dir": "departure", "group": "ana", "flight": "IBX0000", "airline": "（サンプル）", "place": "仙台", "scheduled": "11:15", "estimated": null, "delay_min": null, "kind": "cancelled" },
+        { "dir": "arrival", "group": "jal", "flight": "FDA0000", "airline": "（サンプル）", "place": "名古屋（小牧）", "scheduled": "11:30", "estimated": "12:10", "delay_min": 40, "kind": "delayed" },
+        { "dir": "departure", "group": "other", "flight": "SKY0000", "airline": "（サンプル）", "place": "東京", "scheduled": "11:45", "estimated": "12:20", "delay_min": 35, "kind": "delayed" },
+        { "dir": "arrival", "group": "other", "flight": "APJ0000", "airline": "（サンプル）", "place": "大阪（関西）", "scheduled": "12:00", "estimated": null, "delay_min": null, "kind": "cancelled" },
+        { "dir": "departure", "group": "other", "flight": "JJP0000", "airline": "（サンプル）", "place": "成田", "scheduled": "12:15", "estimated": "13:00", "delay_min": 45, "kind": "delayed" },
+        { "dir": "arrival", "group": "other", "flight": "SJO0000", "airline": "（サンプル）", "place": "成田", "scheduled": "12:30", "estimated": "13:05", "delay_min": 35, "kind": "delayed" },
+        { "dir": "departure", "group": "other", "flight": "XXX0000", "airline": "その他航空", "place": "（サンプル）", "scheduled": "12:45", "estimated": "13:20", "delay_min": 35, "kind": "delayed" }
+      ]
+    },
+    "expressway": {
+      "name": "高速道路（アイハイウェイ）",
+      "url": "https://ihighway.jp/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": "2027-02-06T10:22:37+09:00",
+      "roads": [
+        {
+          "id": "doo", "name": "道央道（苫小牧〜新千歳空港〜札幌）", "status": "delay",
+          "items": [
+            { "kind": "snowChain", "label": "チェーン規制", "major": true, "section": "苫小牧東IC→新千歳空港IC", "direction": "上り：函館方面", "reason": "雪", "detail": null },
+            { "kind": "snowPlow", "label": "除雪作業", "major": false, "section": "北広島IC付近", "direction": "下り：名寄方面", "reason": "作業", "detail": null }
+          ]
+        },
+        {
+          "id": "sasson", "name": "札樽道（札幌〜小樽）", "status": "suspended",
+          "items": [
+            { "kind": "closed", "label": "通行止", "major": true, "section": "銭函IC→小樽IC", "direction": "上下線", "reason": "雪", "detail": null }
+          ]
+        }
+      ]
+    },
+    "chuobus": {
+      "name": "北海道中央バス",
+      "url": "https://www.chuo-bus.co.jp/support/stop/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": null,
+      "groups": [
+        {
+          "id": "airport", "name": "新千歳空港連絡バス", "status": "delay",
+          "items": [
+            { "id": "686", "route": "小樽駅前系統", "direction": "小樽→新千歳空港", "time": null, "status": "suspended", "label": "運休中", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=686&ket=0" },
+            { "id": "686", "route": "小樽駅前系統", "direction": "新千歳空港→小樽", "time": null, "status": "suspended", "label": "運休中", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=686&ket=0" }
+          ]
+        },
+        {
+          "id": "otaru", "name": "高速おたる号（札幌〜小樽）", "status": "delay",
+          "items": [
+            { "id": "611", "route": "高速おたる号（円山経由）", "direction": "小樽→札幌", "time": null, "status": "delay", "label": "一部便運休中", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=611&ket=0" },
+            { "id": "612", "route": "高速おたる号（北大経由）", "direction": "札幌→小樽", "time": "11:00", "status": "delay", "label": "運休", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=612&ket=0" }
+          ]
+        },
+        { "id": "tomakomai", "name": "高速とまこまい号（札幌〜苫小牧）", "status": "normal", "items": [] }
+      ]
+    },
+    "hokto": {
+      "name": "北都交通",
+      "url": "https://www.hokto.co.jp/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": null,
+      "items": [
+        { "id": "sapporo-chitose", "name": "都心線", "about": "札幌市内中心部 ⇔ 新千歳空港", "status": "delay", "label": "一部区間運休", "url": "https://www.hokto.co.jp/sapporo-chitose/" },
+        { "id": "oyachi-chitose", "name": "大谷地線", "about": "地下鉄大谷地駅 ⇔ 新千歳空港", "status": "normal", "label": "平常運行", "url": "https://www.hokto.co.jp/oyachi-chitose/" },
+        { "id": "maruyama-chitose", "name": "円山線", "about": "円山方面 ⇔ 新千歳空港", "status": "suspended", "label": "全便運休", "url": "https://www.hokto.co.jp/maruyama-chitose/" }
+      ]
+    },
+    "silverferry": {
+      "name": "シルバーフェリー（八戸〜苫小牧）",
+      "url": "https://www.silverferry.jp/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": "2027-02-06T09:30:00+09:00",
+      "status": "delay",
+      "message": "欠航または遅延便があります",
+      "notice_url": "https://www.silverferry.jp/",
+      "sailings": [
+        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "08:45", "ship": "シルバープリンセス", "status": "normal", "label": "出港済" },
+        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "13:00", "ship": "シルバーティアラ", "status": "delay", "label": "運航予定・遅れ見込み" },
+        { "date": "2027-02-06", "from": "苫小牧", "to": "八戸", "time": "21:15", "ship": "シルバープリンセス", "status": "suspended", "label": "欠航" },
+        { "date": "2027-02-06", "from": "苫小牧", "to": "八戸", "time": "23:59", "ship": "シルバーティアラ", "status": "suspended", "label": "欠航" }
+      ]
+    },
+    "sunflower": {
+      "name": "さんふらわあ（大洗〜苫小牧）",
+      "url": "https://www.sunflower.co.jp/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": "2027-02-06T09:00:00+09:00",
+      "status": "suspended",
+      "label": "欠航あり"
+    },
+    "snf": {
+      "name": "新日本海フェリー（舞鶴・敦賀・新潟・秋田〜小樽・苫小牧東）",
+      "url": "https://www.snf.jp/",
+      "ok": false,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:20:00+09:00",
+      "fail_count": 2,
+      "source_time": null,
+      "status": "delay",
+      "list_url": "https://www.snf.jp/info-list/?info_group=operation",
+      "notices": [{ "date": "2027-02-06", "url": "https://www.snf.jp/" }]
+    }
+  },
+  "meta": {
+    "source_errors": [
+      { "id": "airport", "message": "サンプル：取得失敗時の表示例" },
+      { "id": "snf", "message": "サンプル：取得失敗時の表示例" }
+    ],
+    "source_warnings": [],
+    "fallback_active": true
+  }
+}

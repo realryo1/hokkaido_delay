@@ -1,0 +1,24 @@
+name = "sm27-delay"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# 独自ドメイン（Cloudflare Registrar で取得した realryo1.com）。レート制限はダッシュボードの WAF（Security rules）で、Worker の手前でかける
+# workers.dev は止める（残すと WAF を通らずに叩けるため）
+routes = [{ pattern = "delay.realryo1.com", custom_domain = true }]
+workers_dev = false
+
+# 5分ごとに収集（無料枠の KV 書き込みは1日1,000回まで。5分ごとなら1日288回）
+# 新千歳空港の FIS が毎時 :01, :06, … に更新されるので、その直後の :02, :07, … に取りに行く
+# 間隔を変えるときは src/index.js の INTERVAL_MIN も合わせる
+[triggers]
+crons = ["2-59/5 * * * *"]
+
+# ダッシュボードの Observability でログ（Cron の実行結果・エラー）を見られるようにする
+[observability]
+enabled = true
+
+# Cloudflare ダッシュボードで作成した KV（DELAY_KV）の ID
+[[kv_namespaces]]
+binding = "DELAY_KV"
+id = "637a26b40a414273ab5e6b8711f70bc8"
+

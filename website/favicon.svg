@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 姉妹プロジェクト（SNOWMIKU2027非公式カレンダー）のアイコンと同じ配色。図柄は電車の正面 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#DD67E2"/>
+      <stop offset="1" stop-color="#9185DE"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <rect x="17" y="10" width="30" height="36" rx="8" fill="#fff"/>
+  <rect x="22" y="16" width="20" height="12" rx="2" fill="#4F458F"/>
+  <circle cx="25" cy="37" r="3" fill="#4F458F"/>
+  <circle cx="39" cy="37" r="3" fill="#4F458F"/>
+  <path d="M22 46 17 55M42 46l5 9" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>

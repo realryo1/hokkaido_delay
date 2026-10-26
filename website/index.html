@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- 末尾スラッシュを強制する。無いと base.css などの相対パスが1階層上を指して壊れる。ファイル名のあるURL（index.html など）は対象外 -->
+  <script>
+    if (/\/[^/.]+$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
+  </script>
+  <!-- 試験版のため検索結果に出さない。正式に公開するときに外す -->
+  <meta name="robots" content="noindex">
+  <title>北海道運行情報（試験版）</title>
+  <meta name="description" content="札幌・新千歳空港・小樽まわりの鉄道・地下鉄・空港・バス・高速道路・フェリーの運行情報をまとめた非公式ページです。">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"></noscript>
+  <!-- 配色・フォント・背景は姉妹プロジェクトのカレンダーとそろえたもの（base.css）、この画面の部品は delay.css に置く -->
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="delay.css">
+  <script src="delay.js" defer></script>
+  <script src="plan.js" defer></script>
+</head>
+<body>
+  <main class="dl">
+    <header class="dl-head">
+      <a class="dl-head__back" href="https://realryo1.github.io/sm27calendar/">SNOWMIKU2027非公式カレンダー →</a>
+      <h1 class="dl-head__title">運行情報<span class="dl-head__beta">試験版</span></h1>
+      <p class="dl-head__meta">
+        <span id="updated">読み込み中…</span>
+        <button type="button" class="dl-head__reload" id="reload">更新</button>
+      </p>
+    </header>
+
+    <div id="banners"></div>
+    <div id="summary"></div>
+
+    <!-- 1分ごとの描き直しで入力が消えないよう、#sections の外に置く（中身は plan.js） -->
+    <section class="dl-card dl-plan" id="dl-plan">
+      <h2 class="dl-card__title">もし飛行機が止まったら？</h2>
+      <p class="dl-plan__lead">フェリーで本州へ渡る方法です。今いる場所を押すと開きます。</p>
+      <div class="dl-plan__form">
+        <label for="plan-time">出る時刻</label>
+        <input type="time" id="plan-time" step="300">
+        <button type="button" class="dl-head__reload" id="plan-now">今から</button>
+      </div>
+
+      <!-- 場所ごとのチップ（details）。閉じているときは丸いチップ、開くとチップが広がって中身が出る -->
+      <div class="dl-plan__places">
+        <details class="dl-plan__place" data-plan="sapporo" open>
+          <summary>札幌から<span class="dl-plan__via">シルバーフェリー（八戸行き）・新日本海フェリー（新潟・舞鶴行き）</span></summary>
+          <div class="dl-plan__routes">
+            <p class="dl-plan__to">苫小牧西港へ<span class="dl-plan__warn">（東港ではない！）</span></p>
+            <ul>
+              <li>北海道中央バス 高速とまこまい号（フェリーターミナル行きの便）札幌駅前 → フェリーターミナル 約1時間51分</li>
+              <li>JR 札幌駅 → 苫小牧駅 → タクシー約15分／道南バス約20分</li>
+            </ul>
+          </div>
+          <div class="dl-plan__result" id="plan-sapporo-silver"></div>
+          <div class="dl-plan__routes">
+            <p class="dl-plan__to">小樽港へ</p>
+            <ul>
+              <li>JR か高速おたる号で小樽へ</li>
+            </ul>
+            <button type="button" class="dl-plan__jump" data-open-plan="otaru">小樽・小樽築港・ウイングベイからの行き方</button>
+          </div>
+          <div class="dl-plan__result" id="plan-sapporo-snf"></div>
+        </details>
+
+        <details class="dl-plan__place" data-plan="chitose" open>
+          <summary>新千歳空港から<span class="dl-plan__via">シルバーフェリー（八戸行き）</span></summary>
+          <div class="dl-plan__routes">
+            <p class="dl-plan__to">苫小牧西港へ<span class="dl-plan__warn">（東港ではない！）</span></p>
+            <ul>
+              <li>JR 新千歳空港 →（南千歳で乗り継ぎ・約30分）→ 苫小牧駅 → タクシー約15分／道南バス約20分</li>
+              <li>苫小牧駅前からは、高速とまこまい号のフェリーターミナル行きにも乗れます（約14分・280円、1日5本）</li>
+            </ul>
+          </div>
+          <div class="dl-plan__result" id="plan-chitose"></div>
+        </details>
+
+        <details class="dl-plan__place" data-plan="otaru" open>
+          <summary>小樽・小樽築港・ウイングベイから<span class="dl-plan__via">新日本海フェリー（新潟・舞鶴行き）</span></summary>
+          <div class="dl-plan__routes">
+            <p class="dl-plan__to">小樽港へ</p>
+            <ul>
+              <li><b>JR小樽駅から</b><br>タクシー約10分／連絡バス（中央バス ぱるて築港線、小樽駅前 4番のりば、約30分・240円）</li>
+              <li><b>JR小樽築港駅・ウイングベイから</b><br>徒歩約20分／タクシー約5分／連絡バス（北口、約10分）</li>
+            </ul>
+            <p class="dl-plan__tip">小樽築港周辺にいる場合、徒歩で良いと思います。雪ミク会場側から出て北に歩くだけ。道中はめっちゃ倉庫・工場という感じ。ただ、足元は正直悪いのでキャリーケースでは微妙かも。</p>
+          </div>
+          <div class="dl-plan__result" id="plan-otaru"></div>
+        </details>
+      </div>
+
+      <details class="dl-plan__notes">
+        <summary>計算の前提・注意・出典</summary>
+        <p><b>新千歳空港から</b>：JR 約30分＋列車の待ち時間の余裕30分＋タクシー約15分で、乗船開始（出港の約1時間前）までにターミナルに着けるかを見ています。列車の時刻は見ていないので、JR北海道の時刻表で確かめてください。徒歩で乗る方の手続きの締切は公式に明記がないため、早めに着くようにしてください。</p>
+        <p><b>小樽から</b>：新日本海フェリーは出港の60分前までにターミナルへ（ゴールデンウィーク・夏休み・年末年始は90分前）。連絡バスで行く場合はこの限りではありません。目安はタクシー約10分で計算しています。運航日が変則になることがあるので、配船表で確かめてください（2027年2月分はまだ公開されていません）。</p>
+        <p>時刻表は定期検査・代船・ダイヤ改正で変わることがあります。八戸からの東北新幹線の乗り継ぎは準備中です。</p>
+        <p>出典：<a href="https://www.silverferry.jp/route_guide/" target="_blank" rel="noopener">シルバーフェリー「航路・時刻」</a>（時刻表・ターミナルへのアクセス・シャトルバス）、<a href="https://www.silverferry.jp/faq/index2.html" target="_blank" rel="noopener">よくあるご質問</a>（乗船開始）、<a href="https://www.hokkaido-airports.com/ja/new-chitose/access/jr/" target="_blank" rel="noopener">新千歳空港「JR」</a>（苫小牧まで約30分）、<a href="https://www.chuo-bus.co.jp/highway/index.cgi?ope=det&amp;n=20&amp;o=1&amp;t=150" target="_blank" rel="noopener">北海道中央バス「高速とまこまい号」</a>（2026年7月1日更新の夏ダイヤ）、<a href="https://www.snf.jp/guide/time_schedule/" target="_blank" rel="noopener">新日本海フェリー「時刻表・運航スケジュール」</a>・<a href="https://www.snf.jp/guide/embark/" target="_blank" rel="noopener">「のりば・アクセス」</a>・<a href="https://www.snf.jp/guide/boarding-about/" target="_blank" rel="noopener">「乗船・下船について」</a>。2026-10-26 時点。</p>
+      </details>
+    </section>
+
+    <div id="sections"></div>
+
+    <section class="dl-card">
+      <h2 class="dl-card__title">そのほかの交通（準備中）</h2>
+      <p class="dl-card__note">下記は自動取得に未対応です。公式サイトで確認してください。</p>
+      <ul class="dl-links">
+        <li><a href="https://www.stsp.or.jp/" target="_blank" rel="noopener">札幌市電（札幌市交通事業振興公社）</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer dl-foot">
+    <p>このページは非公式です。各社の公開情報を5分ごとに自動で集めて表示しており、内容の正確さ・最新であることは保証しません。<br>
+      お出かけの前には、必ず各社の公式情報を確認してください。<br>
+      このページについて、交通事業者へのお問い合わせはしないでください。</p>
+  </footer>
+</body>
+</html>
