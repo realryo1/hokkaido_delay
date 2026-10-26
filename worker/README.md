@@ -45,7 +45,7 @@
 
 Cloudflare の GitHub 連携（Workers Builds）で、`main` に push すると自動でデプロイされる。
 
-- リポジトリ：`realryo1/hokkaido_delay`（2026-10-27 までは `realryo1/sm27calendar`。ダッシュボードでの付け替えが済むまでは、まだ sm27calendar につながっている）
+- リポジトリ：`realryo1/hokkaido_delay`（2026-10-27 までは `realryo1/sm27calendar`）
 - Project name：`sm27-delay`（Worker 名。カスタムドメインと KV が付いているので、リポジトリを分けたときも変えていない） / Root directory：`worker` / Build command：空欄 / Deploy command：`npx wrangler deploy`
 - Build watch paths：`worker/*`（`website/` だけの変更ではデプロイしない）
 - KV（`DELAY_KV`）はダッシュボードで作成し、ID を `wrangler.toml` に入れてある

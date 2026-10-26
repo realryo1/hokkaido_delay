@@ -191,8 +191,9 @@ SNOWMIKU2027非公式カレンダー（`realryo1/sm27calendar`）の試験ペー
 
 別リポジトリへの分離（2026-10-27）
 - [x] ページ・Worker・資料を `realryo1/hokkaido_delay` に移し、カレンダーから消す。`base.css`・`favicon.svg` を足す
-- [ ] GitHub に `realryo1/hokkaido_delay` を作って push し、Settings → Pages の Source を GitHub Actions にする
-- [ ] Cloudflare の Workers Builds（`sm27-delay`）のリポジトリを `realryo1/hokkaido_delay` に付け替える（Root directory は `worker` のまま）
+- [x] GitHub に `realryo1/hokkaido_delay` を作って push する（2026-10-27）
+- [ ] Settings → Pages の Source を GitHub Actions にする
+- [x] Cloudflare の Workers Builds（`sm27-delay`）のリポジトリを `realryo1/hokkaido_delay` に付け替える（2026-10-27。Root directory は `worker` のまま。GitHub の Cloudflare のアプリが見られるリポジトリに hokkaido_delay を足した）
 - [ ] 付け替えてから、カレンダー側の削除を push してデプロイする（公開中の `/sm27calendar/delay/` もこれで消える。先に push すると、`worker/` がないリポジトリで Workers Builds が動いて失敗する。動いている Worker は止まらない）
 
 フェーズ3（代わりの交通手段）
