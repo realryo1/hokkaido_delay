@@ -52,6 +52,7 @@
 ## デプロイ
 
 - ページ：Actionsで手動実行するか、VSCodeでこのフォルダを開いてF5（「Deploy:push→GitHubPages」）を実行すると、`main`をpushしてGitHubActionsの[deploy-pages.yml](.github/workflows/deploy-pages.yml)を起動し、`website/`がGitHubPagesに公開されます。未コミットの変更があると中断します。F5の場合は、公開URLの`index.html`が新しくなる（CDNに反映される）まで待ってから完了と表示します。
+- カレンダーと一括：sm27calendarのフォルダを開いてF5で「Deploy:一括（カレンダー＋運行情報）」を選ぶと、両方のデプロイを同時に実行します（手元では`hokkaido_delay/`をsm27calendarの中に置いているため）。
 - Worker：CloudflareのGitHub連携（WorkersBuilds）で、`main`にpushすると`worker/`が自動でデプロイされます。
 
 ## 注意

@@ -7,7 +7,7 @@
 ・サイト名や説明文を変えたら、website/index.htmlのtitle/metaも直す。
 
 姉妹プロジェクト（sm27calendar）との関係
-・リポジトリは分ける。sm27calendarのファイルを参照・読み込みしない（リンクは可）。
+・リポジトリは分ける。sm27calendarのファイルを参照・読み込みしない（リンクは可）。デプロイはsm27calendarの.vscode/launch.jsonから一括でも行うので、tools/deploy-pages.mjsの場所と使い方を変えたら向こうも直す。
 ・デザインはsm27calendarとそろえる。website/base.cssの値を変えるときは、sm27calendarのwebsite/style.cssも同じにするよう、ユーザーに伝える。
 ・sm27calendarのofficial/（著作物）をこのリポジトリに持ち込まない。使ってよいのはカラーパレットと事実のみ。
 ・localStorageなどのキーはhokkaido-delay-で始める（同じrealryo1.github.ioのオリジンでカレンダーと共有されるため）。
