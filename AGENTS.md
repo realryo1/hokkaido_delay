@@ -9,7 +9,8 @@
 姉妹プロジェクト（sm27calendar）との関係
 ・リポジトリは分ける。sm27calendarのファイルを参照・読み込みしない（リンクは可）。デプロイはsm27calendarの.vscode/launch.jsonから一括でも行うので、tools/deploy-pages.mjsの場所と使い方を変えたら向こうも直す。
 ・デザインはsm27calendarとそろえる。website/base.cssの値を変えるときは、sm27calendarのwebsite/style.cssも同じにするよう、ユーザーに伝える。
-・sm27calendarのofficial/（著作物）をこのリポジトリに持ち込まない。使ってよいのはカラーパレットと事実のみ。
+・sm27calendarのofficial/（著作物）をこのリポジトリに持ち込まない。文章は書き写さず、使ってよいのはカラーパレットと事実のみ（画像は次の項目）。
+・公式の画像は、イラストを使わない。文字や図柄が中心のもの、一部分、引用の範囲なら使ってよい（出典を示す）。
 ・localStorageなどのキーはhokkaido-delay-で始める（同じrealryo1.github.ioのオリジンでカレンダーと共有されるため）。
 
 運行情報（website/・worker/）
