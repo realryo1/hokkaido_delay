@@ -21,12 +21,14 @@
 | `src/sources/jr.js` | JR北海道（`webunkou/json/area/area_01.json`） |
 | `src/sources/subway.js` | 札幌市営地下鉄（`operationstatus.city.sapporo.jp/unkojoho/top.html`） |
 | `src/sources/airport.js` | 新千歳空港 国内線（`hokkaido-airports.com/api/v1/new-chitose/static/fis/domestic/today.json`） |
+| `src/sources/okadama.js` | 札幌丘珠空港（`okadama-airport.co.jp/flight/` の出発・到着の表） |
 | `src/sources/expressway.js` | 高速道路 道央道・札樽道（アイハイウェイ `ihighway.jp/datas/json/traffic.json`） |
 | `src/sources/chuobus.js` | 北海道中央バス 空港連絡バス・高速おたる号・高速とまこまい号（運休情報の RSS `chuo-bus.co.jp/support/stop/?ope=feed&topic=stop_list`） |
 | `src/sources/hokto.js` | 北都交通 空港連絡バス（`hokto.co.jp` のトップ） |
 | `src/sources/silverferry.js` | シルバーフェリー（`silverferry.jp` のトップ。欠航・遅延のときはリンク先のお知らせから便ごとの状況も） |
 | `src/sources/sunflower.js` | さんふらわあ 大洗〜苫小牧（`sunflower.co.jp` のトップ） |
 | `src/sources/snf.js` | 新日本海フェリー（`snf.jp` のトップのヘッダー） |
+| `src/sources/taiheiyo.js` | 太平洋フェリー 名古屋・仙台〜苫小牧（`taiheiyo-ferry.co.jp` のトップの「運航状況」欄） |
 | `src/http.js` | 取得の共通設定（User-Agent、8秒のタイムアウト、`Last-Modified` の読み取り）と日本時間の時刻 |
 | `scripts/collect-local.mjs` | Cloudflare を使わずに収集だけ1回動かす |
 | `wrangler.toml` | Worker 名・Cron・KV・ログの設定 |

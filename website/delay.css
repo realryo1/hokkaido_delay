@@ -15,12 +15,14 @@
   --brand-jr: #59bb32;       /* JR北海道 */
   --brand-subway: #005eaa;   /* 札幌市交通局 */
   --brand-airport: #0e819f;  /* 北海道エアポート */
+  --brand-okadama: #0e819f;  /* 札幌丘珠空港（仮。新千歳空港と同じ色。色は未定） */
   --brand-expressway: #777;  /* 高速道路（仮。色は未定） */
   --brand-chuobus: #d60000;  /* 北海道中央バス */
   --brand-hokto: #00b555;    /* 北都交通 */
   --brand-silverferry: #005d82; /* シルバーフェリー */
   --brand-sunflower: #005396;   /* さんふらわあ */
   --brand-snf: #1a436d;         /* 新日本海フェリー */
+  --brand-taiheiyo: #00859b;    /* 太平洋フェリー（仮。色は未定） */
   /* 「もし飛行機が止まったら？」の便の行の色。シルバーフェリーは船ごと、新日本海フェリーは行き先ごと（舞鶴は公式サイトのアクセントの赤） */
   --ship-princess: #ff66cc;  /* シルバープリンセス ピンク */
   --ship-tiara: #800080;     /* シルバーティアラ 紫 */
@@ -39,6 +41,7 @@
   --air-ado: #00b4f3;  /* AIRDOブルー PANTONE 298C */
   --air-ado-2: #fed100; /* AIRDOイエロー PANTONE 109C（2色目） */
   --air-ibx: #e4007f;  /* アイベックス マゼンタ */
+  --air-tok: #e8788d;  /* トキエア（トキ色。参考値） */
   --air-fda: #d5011d;  /* FDA 赤 */
   --air-fda-2: #feed02; /* FDA 黄（2色目） */
   --air-apj: #e65080;  /* Peach ピンク */
@@ -249,6 +252,7 @@ li.dl-plan__row {
 .dl-card--jr { --brand: var(--brand-jr); }
 .dl-card--subway { --brand: var(--brand-subway); }
 .dl-card--airport { --brand: var(--brand-airport); }
+.dl-card--okadama { --brand: var(--brand-okadama); }
 .dl-card--expressway { --brand: var(--brand-expressway); }
 .dl-card--chuobus { --brand: var(--brand-chuobus); }
 .dl-card--hokto { --brand: var(--brand-hokto); }
@@ -330,10 +334,11 @@ li.dl-plan__row {
 .dl-line--nanboku { --line: var(--line-nanboku); }
 .dl-line--tozai { --line: var(--line-tozai); }
 .dl-line--toho { --line: var(--line-toho); }
-/* フェリーは3社を1枚のカードにまとめ、会社の色は社名の前の丸印で示す */
+/* フェリーは4社を1枚のカードにまとめ、会社の色は社名の前の丸印で示す */
 .dl-line--silverferry { --line: var(--brand-silverferry); }
 .dl-line--sunflower { --line: var(--brand-sunflower); }
 .dl-line--snf { --line: var(--brand-snf); }
+.dl-line--taiheiyo { --line: var(--brand-taiheiyo); }
 .dl-row .dl-warn { flex-basis: 100%; margin: 4px 0 0; }
 .dl-sailings { flex-basis: 100%; }
 .dl-sailings summary { cursor: pointer; font-size: .78rem; font-weight: 700; }
@@ -349,7 +354,8 @@ li.dl-plan__row {
 .dl-air--SKY { --line: var(--air-sky); --line2: var(--air-sky-2); }
 .dl-air--ADO { --line: var(--air-ado); --line2: var(--air-ado-2); --line-ink: #002855; }
 .dl-air--IBX { --line: var(--air-ibx); }
-.dl-air--FDA { --line: var(--air-fda); --line2: var(--air-fda-2); }
+.dl-air--FDA, .dl-air--fda { --line: var(--air-fda); --line2: var(--air-fda-2); }
+.dl-air--TOK, .dl-air--tok { --line: var(--air-tok); }
 .dl-air--APJ { --line: var(--air-apj); }
 .dl-air--JJP { --line: var(--air-jjp); }
 .dl-air--SJO { --line: var(--air-sjo); }

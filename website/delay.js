@@ -38,12 +38,14 @@
     jr: { name: "JR北海道", url: "https://www3.jrhokkaido.co.jp/webunkou/" },
     subway: { name: "札幌市営地下鉄", url: "https://operationstatus.city.sapporo.jp/unkojoho/" },
     airport: { name: "新千歳空港（国内線）", url: "https://www.hokkaido-airports.com/ja/new-chitose/airport/fis/" },
+    okadama: { name: "札幌丘珠空港", url: "https://okadama-airport.co.jp/flight/" },
     expressway: { name: "高速道路（アイハイウェイ）", url: "https://ihighway.jp/" },
     chuobus: { name: "北海道中央バス", url: "https://www.chuo-bus.co.jp/support/stop/" },
     hokto: { name: "北都交通", url: "https://www.hokto.co.jp/" },
     silverferry: { name: "シルバーフェリー（八戸〜苫小牧）", url: "https://www.silverferry.jp/" },
     sunflower: { name: "さんふらわあ（大洗〜苫小牧）", url: "https://www.sunflower.co.jp/" },
     snf: { name: "新日本海フェリー（舞鶴・敦賀・新潟・秋田〜小樽・苫小牧東）", url: "https://www.snf.jp/" },
+    taiheiyo: { name: "太平洋フェリー（名古屋・仙台〜苫小牧）", url: "https://www.taiheiyo-ferry.co.jp/" },
   };
   const officialUrl = (id) => OFFICIAL[id]?.url || "";
   // JR北海道の線区ごとのページ（worker/src/sources/jr.js の LINES の senku と合わせる）
@@ -116,7 +118,8 @@
   }
 
   // 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す）
-  const ui = { flightsOpen: false, showDone: false, sailingsOpen: true };
+  // 便の一覧は新千歳空港（airport）と丘珠空港（okadama）で別々に持つ
+  const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: true };
 
   const KIND = { cancelled: "欠航", delayed: "遅れ", diverted: "引き返し等" };
   const KIND_STATUS = { cancelled: "suspended", delayed: "delay", diverted: "suspended", done: "done" };
@@ -137,9 +140,12 @@
     SJO: "春秋航空",
     SNJ: "ソラシド",
   };
+  // 丘珠空港の一覧の社名（便名の先頭3文字は worker/src/sources/okadama.js が付けたコード。HAC の便も JAL の便名で載る）
+  const AIRLINE_SHORT_OKADAMA = { JAL: "JAL・HAC", TOK: "トキエア", FDA: "FDA" };
   const kindLabel = (f) => (f.kind === "done" ? (f.dir === "arrival" ? "遅れ（到着済）" : "遅れ（出発済）") : KIND[f.kind]);
 
-  function renderAirport(svc) {
+  // 新千歳空港と丘珠空港は同じ形のデータ（groups・flights）なので同じ描き方にする。short は社名の列に出す短い表記
+  function renderAirport(id, svc, short = AIRLINE_SHORT) {
     const groups = (svc.groups || [])
       .map((g) => {
         const label = g.status === "delay" ? "遅れ・欠航あり" : g.status === "suspended" ? "大規模欠航" : "";
@@ -158,9 +164,9 @@
 
     const all = svc.flights || [];
     const doneCount = all.filter((f) => f.kind === "done").length;
-    const flights = ui.showDone ? all : all.filter((f) => f.kind !== "done");
+    const flights = ui.showDone[id] ? all : all.filter((f) => f.kind !== "done");
     const toggle = doneCount
-      ? `<label class="dl-check"><input type="checkbox" data-show-done${ui.showDone ? " checked" : ""}> 出発・到着済を表示（${doneCount}便）</label>`
+      ? `<label class="dl-check"><input type="checkbox" data-show-done="${id}"${ui.showDone[id] ? " checked" : ""}> 出発・到着済を表示（${doneCount}便）</label>`
       : "";
     // 出発と到着で表を分ける。列は 航空会社・便名・行先（到着は出発地）・定刻・変更・状況 の順
     const flightTable = (dir, title, placeLabel) => {
@@ -173,7 +179,7 @@
             <tbody>${rows
               .map(
                 (f) => `<tr class="dl-airrow dl-air--${esc(String(f.flight).slice(0, 3))}${f.kind === "done" ? " is-done" : ""}">
-                  <td class="dl-airname">${esc(AIRLINE_SHORT[String(f.flight).slice(0, 3)] || f.airline)}</td>
+                  <td class="dl-airname">${esc(short[String(f.flight).slice(0, 3)] || f.airline)}</td>
                   <td>${esc(f.flight)}</td>
                   <td>${esc(f.place)}</td>
                   <td>${esc(f.scheduled)}</td>
@@ -189,15 +195,20 @@
       : `<p class="dl-card__note">これから出発・到着する便に、遅れ・欠航はありません。</p>`;
     const current = all.length - doneCount;
     const list = all.length
-      ? `<details class="dl-flights"${ui.flightsOpen ? " open" : ""}>
+      ? `<details class="dl-flights" data-card="${id}"${ui.flightsOpen[id] ? " open" : ""}>
           <summary>遅れ・欠航の便（${current}便）</summary>
           ${toggle}
           ${table}
         </details>`
       : "";
-    const body = `<ul class="dl-rows">${groups}</ul>${list}
-      <p class="dl-card__note">運航会社ごとの集計です（コードシェア便は運航会社側に数えます）。</p>`;
-    return card("airport", svc, body, svc.source_time ? `${hhmm(svc.source_time)} 時点` : "");
+    const note =
+      id === "okadama"
+        ? "航空会社ごとの集計です。備考が「目的地天候不良」の便は、引き返しなどの可能性がある便として数えます。丘珠空港は道内各地と秋田・新潟などを結び、新千歳空港が使えないときの代わりになることがあります。"
+        : "運航会社ごとの集計です（コードシェア便は運航会社側に数えます）。";
+    const empty = (svc.groups || []).length ? "" : `<p class="dl-card__note">現在、表示できるフライト情報がありません。</p>`;
+    const body = `<ul class="dl-rows">${groups}</ul>${empty}${list}
+      <p class="dl-card__note">${note}</p>`;
+    return card(id, svc, body, svc.ok ? (svc.source_time ? `${hhmm(svc.source_time)} 時点` : `${hhmm(svc.fetched_at)} 取得`) : "");
   }
 
   // 高速道路：路線ごとの状態と、重要な規制（通行止・チェーン規制・事故など）の区間。車線規制・除雪作業などは件数だけ出す
@@ -275,11 +286,12 @@
     return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
   }
 
-  // フェリー：3社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に注意と公式リンクを出す
+  // フェリー：4社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に注意と公式リンクを出す
   //   シルバーフェリー：定型の文言（通常運航しています／欠航または遅延便があります）
   //   さんふらわあ：自由記述の欄から判定した状態だけ（文章は取り込んでいない）
   //   新日本海フェリー：運航状況のお知らせの件数と日付だけ（題名は取り込んでいない）
-  const FERRIES = ["silverferry", "sunflower", "snf"];
+  //   太平洋フェリー：さんふらわあと同じく、自由記述の欄から判定した状態だけ
+  const FERRIES = ["silverferry", "sunflower", "snf", "taiheiyo"];
   // シルバーフェリーの便ごとの行の色（delay.css の .dl-ship--*。plan.js の SHIP_CLASS と同じ）。代船などは灰色
   const SILVER_SHIP = { シルバープリンセス: "princess", シルバーティアラ: "tiara", シルバーブリーズ: "breeze", シルバーエイト: "eight" };
   // "2026-02-07" / "2026-02-28T09:00:00+09:00" → "2/7" / "2/28"
@@ -305,7 +317,7 @@
             .join("")}</ul>
         </details>`;
       }
-    } else if (id === "sunflower") {
+    } else if (id === "sunflower" || id === "taiheiyo") {
       label = svc.label;
       if (svc.source_time) msg = `${esc(md(svc.source_time))} ${esc(hhmm(svc.source_time))} 現在の案内`;
     } else {
@@ -380,6 +392,11 @@
           delay: "遅れ・欠航あり",
           suspended: "大規模欠航",
         }),
+        // 丘珠空港は道内便が大半なので、本州行き（秋田・新潟など）の状況そのものではなく、空港全体の状態
+        means("丘珠空港の便", "okadama", "okadama", (s) => (s.groups?.length ? worst(s.groups.map((g) => g.status)) : "offhours"), {
+          delay: "遅れ・欠航あり",
+          suspended: "大規模欠航",
+        }),
         means("JR 特急・新幹線", "jr", "jr", (s) =>
           worst((s.items || []).filter((i) => ["express", "shinkansen"].includes(i.id)).map((i) => i.status)),
           JR
@@ -387,6 +404,7 @@
         means("シルバーフェリー", "ferry", "silverferry", (s) => s.status, { delay: "欠航・遅延あり" }),
         means("さんふらわあ", "ferry", "sunflower", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
         means("新日本海フェリー", "ferry", "snf", (s) => s.status, { delay: "お知らせあり" }),
+        means("太平洋フェリー", "ferry", "taiheiyo", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
       ],
     },
   ];
@@ -429,7 +447,8 @@
   const RENDER = {
     jr: renderJr,
     subway: renderSubway,
-    airport: renderAirport,
+    airport: (svc) => renderAirport("airport", svc),
+    okadama: (svc) => renderAirport("okadama", svc, AIRLINE_SHORT_OKADAMA),
     expressway: renderExpressway,
     chuobus: renderChuobus,
     hokto: renderHokto,
@@ -534,14 +553,14 @@
   $sections.addEventListener(
     "toggle",
     (ev) => {
-      if (ev.target.matches?.(".dl-flights")) ui.flightsOpen = ev.target.open;
+      if (ev.target.matches?.(".dl-flights")) ui.flightsOpen[ev.target.dataset.card] = ev.target.open;
       if (ev.target.matches?.(".dl-sailings")) ui.sailingsOpen = ev.target.open;
     },
     true
   );
   $sections.addEventListener("change", (ev) => {
     if (!ev.target.matches("[data-show-done]")) return;
-    ui.showDone = ev.target.checked;
+    ui.showDone[ev.target.dataset.showDone] = ev.target.checked;
     if (last) render(last);
   });
   // 画面を見ているあいだだけ1分ごとに更新し、戻ってきたときにもすぐ更新する

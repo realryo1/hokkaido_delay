@@ -58,6 +58,25 @@
         { "dir": "departure", "group": "other", "flight": "XXX0000", "airline": "その他航空", "place": "（サンプル）", "scheduled": "12:45", "estimated": "13:20", "delay_min": 35, "kind": "delayed" }
       ]
     },
+    "okadama": {
+      "name": "札幌丘珠空港",
+      "url": "https://okadama-airport.co.jp/flight/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": null,
+      "groups": [
+        { "id": "jal", "name": "JAL・HAC（北海道エアシステム）", "status": "delay", "total": 36, "cancelled": 2, "delayed": 3, "diverted": 1, "delayed_30": 2, "done_late": 1 },
+        { "id": "tok", "name": "トキエア", "status": "normal", "total": 4, "cancelled": 0, "delayed": 0, "diverted": 0, "delayed_30": 0, "done_late": 0 }
+      ],
+      "flights": [
+        { "dir": "departure", "group": "jal", "flight": "JAL0000", "airline": "JAL・HAC", "place": "（サンプル）", "scheduled": "09:05", "estimated": "10:00", "delay_min": 55, "kind": "done" },
+        { "dir": "departure", "group": "jal", "flight": "JAL0001", "airline": "JAL・HAC", "place": "（サンプル）", "scheduled": "11:40", "estimated": null, "delay_min": null, "kind": "cancelled" },
+        { "dir": "arrival", "group": "jal", "flight": "JAL0002", "airline": "JAL・HAC", "place": "（サンプル）", "scheduled": "12:10", "estimated": "12:50", "delay_min": 40, "kind": "delayed" },
+        { "dir": "departure", "group": "jal", "flight": "JAL0003", "airline": "JAL・HAC", "place": "（サンプル）", "scheduled": "14:45", "estimated": null, "delay_min": null, "kind": "diverted" }
+      ]
+    },
     "expressway": {
       "name": "高速道路（アイハイウェイ）",
       "url": "https://ihighway.jp/",
@@ -162,6 +181,17 @@
       "status": "delay",
       "list_url": "https://www.snf.jp/info-list/?info_group=operation",
       "notices": [{ "date": "2027-02-06", "url": "https://www.snf.jp/" }]
+    },
+    "taiheiyo": {
+      "name": "太平洋フェリー（名古屋・仙台〜苫小牧）",
+      "url": "https://www.taiheiyo-ferry.co.jp/",
+      "ok": true,
+      "fetched_at": "2027-02-06T10:30:00+09:00",
+      "last_success_at": "2027-02-06T10:30:00+09:00",
+      "fail_count": 0,
+      "source_time": null,
+      "status": "normal",
+      "label": "通常運航"
     }
   },
   "meta": {
