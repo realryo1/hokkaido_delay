@@ -3,7 +3,7 @@
 `tienResearch.md`（調査資料）をもとに作っている運行情報機能の、実際の実装と進捗。
 SNOWMIKU2027非公式カレンダー（`realryo1/sm27calendar`）の試験ページとして作り始め、2026-10-27に姉妹プロジェクトとして別リポジトリ（`realryo1/hokkaido_delay`）に分けた。`website/`（表示）と `worker/`（収集）に分けて作っている。
 
-最終更新：2026-10-29
+最終更新：2026-10-30
 
 ## 全体の構成
 
@@ -24,7 +24,7 @@ SNOWMIKU2027非公式カレンダー（`realryo1/sm27calendar`）の試験ペー
 | KV | `DELAY_KV`（キー `status`） |
 | デプロイ | Cloudflare の GitHub 連携（Workers Builds）。`main` に push すると `worker/` が自動デプロイ |
 | ログ | `[observability] enabled = true`。ダッシュボードの Observability で見る |
-| 試験ページ | `website/`（`https://realryo1.github.io/hokkaido_delay/`。このリポジトリの GitHub Pages のワークフローを手動実行して公開。`noindex`、カレンダーからはリンクしていない） |
+| 試験ページ | `website/`（`https://realryo1.github.io/hokkaido_delay/`。このリポジトリの GitHub Pages のワークフローを手動実行して公開。`noindex`。カレンダーからは、サイドバーの切り替え（`nav.enabled`）が有効なときだけ iframe で開ける（下の「決めたこと」）） |
 
 ## 対応している交通機関
 
@@ -161,6 +161,7 @@ SNOWMIKU2027非公式カレンダー（`realryo1/sm27calendar`）の試験ペー
 - **Service Worker は使わない**：運行情報は古いものを出すと危険なので、オフライン用のキャッシュもしない。カレンダーの一部だったときは、`/delay/` を開くとカレンダーが返る問題があったため、カレンダーの `sw.js` の対象外にしていた。今はカレンダーの Service Worker の範囲（`/sm27calendar/`）の外にある
 - **旧URL（`/sm27calendar/delay/`）は転送する**（2026-10-27）：カレンダーの `website/delay/index.html` に、ここへすぐ転送するだけのページを置いた（クエリと `#` はそのまま渡す）。カレンダーの `sw.js` は `/delay/` を引き続き対象外にしている
 - **姉妹プロジェクトとして別リポジトリに分ける**（2026-10-27）：カレンダーに組み込む予定だったが、ページ・Worker・資料・README を `realryo1/hokkaido_delay` に移し、カレンダーとは文書のリンクだけでつなぐ。デザインはそろえたままにするため、カレンダーの `style.css` から使っている部分（配色・フォント・背景・フッター）を `website/base.css` に写した。値を変えるときは両方を直す。ファビコンはカレンダーと同じ配色で、図柄を電車にした（`website/favicon.svg`）
+- **カレンダーのサイドバーから iframe で開けるようにする**（2026-10-30、ユーザーの依頼）：カレンダーの左のサイドバー（スマホは画面の下のバー）で、このページを `?embed=1` を付けた iframe でカレンダーに重ねて出す（カレンダーの `nav.js`。仮実装のため、カレンダー側の `nav.enabled` は `false`）。`?embed=1` のときは `index.html` が html に `.is-embed` を付け、カレンダーへ戻るリンク（`.dl-head__back`）を隠し、スマホではカレンダーの下のバーが重なる分より少し多め（80px＋画面の下端の余白）にページの下を空ける（`delay.css`）。ファイルの共有はせず、公開URLを開くだけ。同じ `realryo1.github.io` から開くので、`/status.json` の Origin の制限にもかからない
   - 両方とも `realryo1.github.io` なので、Worker の Origin の制限はそのまま。localStorage も同じオリジンで共有されるので、キーは `hokkaido-delay-` で始める（カレンダーは `sm27-`）
   - Worker 名（`sm27-delay`）は変えていない。変えると Cloudflare では別の Worker になり、カスタムドメインと KV を付け直すことになるため
 

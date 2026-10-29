@@ -6,6 +6,8 @@
   <!-- 末尾スラッシュを強制する。無いと base.css などの相対パスが1階層上を指して壊れる。ファイル名のあるURL（index.html など）は対象外 -->
   <script>
     if (/\/[^/.]+$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
+    // カレンダーのサイドバーから iframe で開いたとき（?embed=1）は、カレンダーへ戻るリンクを隠す（delay.css の .is-embed）
+    if (new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("is-embed");
   </script>
   <!-- 試験版のため検索結果に出さない。正式に公開するときに外す -->
   <meta name="robots" content="noindex">

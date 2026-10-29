@@ -47,7 +47,7 @@
 
 ## ローカルで確認
 
-`website/`を静的サーバーで配信。VSCode拡張のLiveServerなどを使用してください。`?sample`でサンプル表示、Workerを手元で動かす方法は[worker/README.md](worker/README.md)。
+`website/`を静的サーバーで配信。VSCode拡張のLiveServerなどを使用してください。`?sample`でサンプル表示、`?embed=1`でカレンダーのサイドバーに埋め込むときの表示（カレンダーへ戻るリンクを隠す）。Workerを手元で動かす方法は[worker/README.md](worker/README.md)。
 
 ## デプロイ
 

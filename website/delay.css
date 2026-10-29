@@ -59,6 +59,11 @@
 /* ---------- 見出し ---------- */
 .dl-head { margin-bottom: 16px; }
 .dl-head__back { color: var(--col-ink); font-size: .8rem; }
+.is-embed .dl-head__back { display: none; } /* カレンダーの中に出しているので、カレンダーへ戻るリンクは要らない */
+/* スマホでは、カレンダーの下のバー（高さはカレンダーの style.css の --nav-h。いまは75px＋画面の下端の余白）が重なるので、それより少し多めに下を空ける */
+@media (max-width: 640px) {
+  .is-embed body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
 .dl-head__title {
   margin: 8px 0 4px;
   font-family: var(--font-display);
