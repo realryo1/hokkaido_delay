@@ -52,16 +52,32 @@
   const SNF_BEFORE = 60; // 出港の60分前までにターミナルへ（新日本海フェリー公式。繁忙期は90分前）
   const SHOW = 2; // 表示する便の数（直近の2便）
 
+  // 港までの行き方（HTML。手で書いた定数なのでエスケープしない）
+  const WAYS = {
+    sapporoSilver: [
+      "北海道中央バス 高速とまこまい号（フェリーターミナル行きの便）札幌駅前 → フェリーターミナル 約1時間51分",
+      "JR 札幌駅 → 苫小牧駅 → タクシー約15分／道南バス約20分",
+    ],
+    sapporoSnf: ["JR か高速おたる号で小樽へ"],
+    chitose: [
+      "JR 新千歳空港 →（南千歳で乗り継ぎ・約30分）→ 苫小牧駅 → タクシー約15分／道南バス約20分",
+      "苫小牧駅前からは、高速とまこまい号のフェリーターミナル行きにも乗れます（約14分・280円、1日5本）",
+    ],
+    otaru: [
+      "<b>JR小樽駅から</b><br>タクシー約10分／連絡バス（中央バス ぱるて築港線、小樽駅前 4番のりば、約30分・240円）",
+      "<b>JR小樽築港駅・ウイングベイから</b><br>徒歩約20分／タクシー約5分／連絡バス（北口、約10分）",
+    ],
+  };
+  // 作者の経験からの参考情報（公式の案内ではない）
+  const OTARU_TIP =
+    "小樽築港周辺にいる場合、徒歩で良いと思います。雪ミク会場側から出て北に歩くだけ。道中はめっちゃ倉庫・工場という感じ。ただ、足元は正直悪いのでキャリーケースでは微妙かも。";
+  const PLACE = { sapporo: "札幌", chitose: "新千歳空港", otaru: "小樽・小樽築港・ウイングベイ" };
+
   const $time = document.getElementById("plan-time");
   const $now = document.getElementById("plan-now");
-  const $out = {
-    sapporoSilver: document.getElementById("plan-sapporo-silver"),
-    sapporoSnf: document.getElementById("plan-sapporo-snf"),
-    chitose: document.getElementById("plan-chitose"),
-    otaru: document.getElementById("plan-otaru"),
-  };
-  const $places = [...document.querySelectorAll(".dl-plan__place")];
-  if (!$time || !$out.chitose) return;
+  const $tree = document.getElementById("plan-tree");
+  const $origins = [...document.querySelectorAll(".dl-plan__origin")];
+  if (!$time || !$tree) return;
 
   const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -132,23 +148,40 @@
       return t <= s.dep - SILVER_BEFORE && t >= s.dep - 180 && s.d * 1440 + toMin(b[key]) >= from;
     }).pop();
   }
-  // 会社名と行き先（八戸）は上の枠のタイトルにあるので、船の名前だけ
+  // 会社名と行き先は上の港の枝にあるので、便は日時と船の名前（新日本海フェリーは行き先）だけ
   const silverTitle = (s) => `${DAY[s.d]}（${md(s.date)}）${s.time}発 ${s.ship}`;
   const silverArrive = (s) =>
     `八戸港 ${DAY[s.d + (s.nextDay ? 1 : 0)]} ${s.arrive}着／${s.shuttle ? `シャトルバス ${s.shuttle}` : "八戸駅へはタクシー約20分"}`;
-  const snfTitle = (s) => `${DAY[s.d]}（${md(s.date)}）${s.time}発 新日本海フェリー（${s.to}行き）`;
+  const snfTitle = (s) => `${DAY[s.d]}（${md(s.date)}）${s.time}発 ${s.to}行き`;
   const snfArrive = (s) => `${s.to}港 ${DAY[s.d + 1]} ${s.arrive}着`;
 
-  // lines は HTML（呼ぶ側でエスケープ済み）
-  function row({ title, live, lines, late, ship }) {
-    return `<li class="dl-row dl-plan__row dl-ship--${esc(SHIP_CLASS[ship] || "other")}${late ? " is-late" : ""}">
-      <span class="dl-row__name">${esc(title)}</span>${live || ""}
-      ${lines
-        .filter(Boolean)
-        .map((l) => `<span class="dl-row__msg">${l}</span>`)
-        .join("")}
-    </li>`;
-  }
+  // ---------- 樹形図（delay.css の .dl-tree） ----------
+  // 今いる場所 → 港（行き方つき） → 便 → 着く港 の4段。枝は li の入れ子で、つなぐ線は CSS で描く
+  const branch = (box, children = [], cls = "") =>
+    `<li${cls ? ` class="${cls}"` : ""}>${box}${children.length ? `<ul>${children.join("")}</ul>` : ""}</li>`;
+  // ways・extra は HTML（呼ぶ側でエスケープ済み）
+  const port = ({ name, warn, ferry, ways, extra }, sailings) =>
+    branch(
+      `<div class="dl-tree__box dl-tree__box--port">
+        <span class="dl-tree__name">${esc(name)}へ</span>${warn ? `<span class="dl-plan__warn">（${esc(warn)}）</span>` : ""}
+        <span class="dl-tree__sub">${esc(ferry)}</span>
+        <ul class="dl-tree__ways">${ways.map((w) => `<li>${w}</li>`).join("")}</ul>${extra || ""}
+      </div>`,
+      sailings
+    );
+  // 便の枝：便の色（船ごと・行き先ごと）で塗り、子の枝に着く港を出す。間に合わない便は薄くする。lines は HTML（呼ぶ側でエスケープ済み）
+  const sailing = ({ title, live, lines, late, ship, arrive }) =>
+    branch(
+      `<div class="dl-tree__box dl-tree__ship">
+        <span class="dl-tree__name">${esc(title)}</span>${live || ""}
+        ${lines
+          .filter(Boolean)
+          .map((l) => `<span class="dl-tree__line">${l}</span>`)
+          .join("")}
+      </div>`,
+      [branch(`<div class="dl-tree__box dl-tree__box--arrive">${esc(arrive)}</div>`)],
+      `dl-ship dl-ship--${esc(SHIP_CLASS[ship] || "other")}${late ? " is-late" : ""}`
+    );
   const verdict = (leaveBy, base, where) =>
     leaveBy >= base
       ? `<strong>間に合う目安</strong>：${esc(where)}を ${esc(fmt(leaveBy))} までに出発（あと ${esc(span(leaveBy - base))}）`
@@ -161,10 +194,10 @@
       : "";
   };
 
-  function renderSapporo(base, today) {
+  function sapporo(base, today) {
     const silverRows = upcoming(SILVER, base, today).map((s) => {
       const bus = lastBus(s, base, "sapporo");
-      return row({
+      return sailing({
         title: silverTitle(s),
         ship: s.ship,
         live: silverBadge(s),
@@ -173,31 +206,41 @@
           bus
             ? `<strong>間に合う目安</strong>：札幌駅前 ${esc(bus.sapporo)}発の高速とまこまい号（フェリーターミナル ${esc(bus.terminal)}着）${busBadge()}`
             : "高速とまこまい号では間に合いません（JR で苫小牧駅へ行き、タクシーなど）",
-          esc(silverArrive(s)),
         ],
+        arrive: silverArrive(s),
       });
     });
     // 札幌〜小樽の所要時間は公式の数字がないので、計算はせずに小樽からの行き方を示す
     const snfRows = upcoming(SNF, base, today).map((s) =>
-      row({
+      sailing({
         title: snfTitle(s),
         ship: s.to,
         live: snfBadge(),
-        lines: [`小樽へ移動し、連絡バス（${esc(s.bus)}）かタクシーでターミナルへ。出港の60分前まで`, esc(snfArrive(s))],
+        lines: [`小樽へ移動し、連絡バス（${esc(s.bus)}）かタクシーでターミナルへ。出港の60分前まで`],
+        arrive: snfArrive(s),
       })
     );
-    // フェリーごとに「行き方 → 便」の順に並べる（index.html でそれぞれの行き方の下に入れ物がある）
-    $out.sapporoSilver.innerHTML = `<ul class="dl-rows">${silverRows.join("")}</ul>`;
-    $out.sapporoSnf.innerHTML = `<ul class="dl-rows">${snfRows.join("")}</ul>`;
+    return [
+      port({ name: "苫小牧西港", warn: "東港ではない！", ferry: "シルバーフェリー（八戸行き）", ways: WAYS.sapporoSilver }, silverRows),
+      port(
+        {
+          name: "小樽港",
+          ferry: "新日本海フェリー（新潟・舞鶴行き）",
+          ways: WAYS.sapporoSnf,
+          extra: `<button type="button" class="dl-plan__jump" data-plan-go="otaru">小樽・小樽築港・ウイングベイからの行き方</button>`,
+        },
+        snfRows
+      ),
+    ];
   }
 
-  function renderChitose(base, today) {
+  function chitose(base, today) {
     const rows = upcoming(SILVER, base, today).map((s) => {
       const leaveBy = s.dep - SILVER_BEFORE - CHITOSE_TRAVEL; // 新千歳空港をこの時刻までに出れば間に合う
       const ok = leaveBy >= base;
       // 苫小牧駅に着いてから乗れるバス（JR と待ち時間の分だけ後）
       const bus = lastBus(s, base + JR_MIN + WAIT_MIN, "station");
-      return row({
+      return sailing({
         title: silverTitle(s),
         ship: s.ship,
         live: silverBadge(s),
@@ -208,67 +251,77 @@
             ? `バスなら：高速とまこまい号 苫小牧駅前 ${esc(bus.station)}発 → フェリーターミナル ${esc(bus.terminal)}着${busBadge()}`
             : "",
           ok ? nightNote(leaveBy) : "",
-          esc(silverArrive(s)),
         ],
+        arrive: silverArrive(s),
       });
     });
-    $out.chitose.innerHTML = `<ul class="dl-rows">${rows.join("")}</ul>`;
+    return [port({ name: "苫小牧西港", warn: "東港ではない！", ferry: "シルバーフェリー（八戸行き）", ways: WAYS.chitose }, rows)];
   }
 
-  function renderOtaru(base, today) {
+  function otaru(base, today) {
     const rows = upcoming(SNF, base, today).map((s) => {
       const leaveBy = s.dep - SNF_BEFORE - OTARU_TAXI; // 小樽駅をこの時刻までにタクシーで出れば間に合う
-      return row({
+      return sailing({
         title: snfTitle(s),
         ship: s.to,
         live: snfBadge(),
         late: leaveBy < base,
-        lines: [verdict(leaveBy, base, "小樽駅（タクシー）"), `連絡バス：${esc(s.bus)}`, esc(snfArrive(s))],
+        lines: [verdict(leaveBy, base, "小樽駅（タクシー）"), `連絡バス：${esc(s.bus)}`],
+        arrive: snfArrive(s),
       });
     });
-    $out.otaru.innerHTML = `<ul class="dl-rows">${rows.join("")}</ul>`;
+    return [
+      port(
+        {
+          name: "小樽港",
+          ferry: "新日本海フェリー（新潟・舞鶴行き）",
+          ways: WAYS.otaru,
+          extra: `<p class="dl-plan__tip">${esc(OTARU_TIP)}</p>`,
+        },
+        rows
+      ),
+    ];
+  }
+
+  const PORTS = { sapporo, chitose, otaru };
+
+  // ---------- 今いる場所（この端末に覚える） ----------
+  const KEY = "hokkaido-delay-plan-from";
+  let from = "sapporo";
+  try {
+    from = PORTS[localStorage.getItem(KEY)] ? localStorage.getItem(KEY) : from;
+  } catch {
+    // 読めなければ札幌から
+  }
+  function choose(id) {
+    from = id;
+    try {
+      localStorage.setItem(KEY, id);
+    } catch {
+      // 保存できなくても、切り替えはできる
+    }
+    render();
   }
 
   function render() {
     const now = jstNow();
     const base = $time.value ? toMin($time.value) : now.min;
     if (!$time.value) $time.value = fmt(base);
-    renderSapporo(base, now.date);
-    renderChitose(base, now.date);
-    renderOtaru(base, now.date);
+    for (const $o of $origins) $o.setAttribute("aria-selected", String($o.dataset.plan === from));
+    $tree.innerHTML = `<ul>${branch(
+      `<div class="dl-tree__box dl-tree__box--from"><span class="dl-tree__name">${esc(PLACE[from])}</span><span class="dl-tree__sub">${esc(fmt(base))}に出る</span></div>`,
+      PORTS[from](base, now.date)
+    )}</ul>`;
   }
 
-  // ---------- 開閉（閉じた場所をこの端末に覚える） ----------
-  // 場所ごとのチップは details。開くとチップが広がって中身が出る（delay.css の .dl-plan__place）
-  const KEY = "hokkaido-delay-plan-closed";
-  let closed = [];
-  try {
-    closed = JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    closed = [];
-  }
-  for (const $p of $places) {
-    $p.open = !closed.includes($p.dataset.plan);
-    $p.addEventListener("toggle", () => {
-      const id = $p.dataset.plan;
-      closed = $p.open ? closed.filter((x) => x !== id) : [...new Set([...closed, id])];
-      try {
-        localStorage.setItem(KEY, JSON.stringify(closed));
-      } catch {
-        // 保存できなくても、開閉はできる
-      }
-    });
-  }
-
-  // 別の場所の欄へ移るボタン（札幌の欄の「小樽・小樽築港・ウイングベイからの行き方」）。閉じていれば開いてからスクロールする
-  for (const $b of document.querySelectorAll("[data-open-plan]")) {
-    $b.addEventListener("click", () => {
-      const $p = $places.find((x) => x.dataset.plan === $b.dataset.openPlan);
-      if (!$p) return;
-      $p.open = true;
-      $p.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
+  for (const $o of $origins) $o.addEventListener("click", () => choose($o.dataset.plan));
+  // 札幌の枝の「小樽・小樽築港・ウイングベイからの行き方」は、小樽を選び直して木の先頭へ戻る（木は描き直すので外側で受ける）
+  $tree.addEventListener("click", (ev) => {
+    const $b = ev.target.closest("[data-plan-go]");
+    if (!$b) return;
+    choose($b.dataset.planGo);
+    $tree.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   $time.addEventListener("input", render);
   $now?.addEventListener("click", () => {
