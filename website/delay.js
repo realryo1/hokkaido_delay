@@ -6,6 +6,10 @@
   const REFRESH_MS = 60 * 1000;
   const STALE_MIN = 20; // これより古ければ「更新が止まっている」と表示
 
+  // タッチでページ全体を拡大させない（iPhoneで拡大のあと「繰り返しエラー」になることがある）。iOS は viewport の user-scalable=no を無視するため
+  document.addEventListener("gesturestart", (ev) => ev.preventDefault());
+  document.addEventListener("gesturechange", (ev) => ev.preventDefault());
+
   const params = new URLSearchParams(location.search);
   const local = ["localhost", "127.0.0.1"].includes(location.hostname);
   // ?sample でサンプル表示、手元確認のときだけ ?api=http://localhost:8787/status.json で取得先を差し替えられる
