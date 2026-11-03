@@ -235,25 +235,144 @@
   border-left-color: var(--col-secondary);
 }
 
-/* ---------- 行き先ごとのまとめ ---------- */
-.dl-sum { padding: 10px 0; border-bottom: 1px solid var(--col-paper-muted); }
-.dl-sum:last-child { border-bottom: 0; }
-.dl-sum__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
-.dl-sum__name { font-weight: 700; }
-.dl-sum__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
-.dl-chip {
-  display: inline-flex;
+/* ---------- 行き先ごとのまとめ（縦の路線図） ----------
+   1つの grid に描く（delay.js の renderMap）。列は「左の余白・線の列（--n 本）・駅名と判定」、行は駅と駅のあいだを交互に並べる。
+   駅（.dl-map__stop）は停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。線（.dl-track）は行ごとに置き、名前は縦書きで線の右に。状態は線の描き方と印（○△×）で示す */
+.dl-map {
+  --pitch: 28px;
+  display: grid;
+  grid-template-columns: 6px repeat(var(--n), var(--pitch)) minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
-  padding: 3px 4px 3px 10px;
-  border: 1px solid var(--col-secondary-light);
+  margin: 4px 0 18px;
+}
+.dl-map__side { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; padding: 4px 0 4px 12px; }
+.dl-map__side .dl-badge { white-space: normal; }
+/* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
+   線の左右に同じだけ（8px）余白を取る（列の中で線は左寄り（4〜10px）、右は縦書きの名前の場所なので、右は詰める）。
+   駅名が入りきらないときは右へ広げる */
+.dl-map__stop {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: calc(100% - 6px);
+  min-height: 30px;
+  margin: 0 10px 0 -4px;
+  padding: 2px 10px;
+  border: 3px solid var(--col-ink);
   border-radius: 999px;
+  background: var(--col-paper);
+}
+/* 駅名と枝：カプセルと同じ形の透明な箱を通過する線より上に重ねて書く。下のカプセルの中身は大きさを決めるためだけに置き、見せない。
+   駅名のまわりは白く抜いて、通過する線が文字にかからないようにする */
+.dl-map__stop:not(.dl-map__stop--label) > * { visibility: hidden; }
+.dl-map__stop--label { z-index: 3; border-color: transparent; background: none; pointer-events: none; }
+.dl-map__stop--label .dl-map__station { padding: 0 4px; border-radius: 6px; background: var(--col-paper); }
+.dl-map__stop--label .dl-map__branch { pointer-events: auto; }
+/* 横に枝を出す駅（札幌の地下鉄）は、参考にした路線図の乗換駅のように縦に長くして、枝もカプセルの中に入れる */
+.dl-map__stop--tall { flex-direction: column; align-items: flex-start; padding: 6px 14px 8px; border-radius: 16px; }
+.dl-map__station { font-size: .95rem; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+.dl-map__name { font-weight: 700; }
+.dl-map__sub { flex-basis: 100%; font-size: .7rem; opacity: .75; }
+/* 駅の行の線：始まりは下半分、終わりは上半分、通過は駅の上に重ねる */
+.dl-map > .dl-track { align-self: stretch; }
+.dl-map > .dl-track--top { align-self: start; height: 50%; }
+.dl-map > .dl-track--bottom { align-self: end; height: 50%; }
+.dl-map > .dl-track--pass { z-index: 2; }
+.dl-map > .dl-track--more { min-height: 16px; }
+/* 上へ出して消えていく線（小樽から日本海側へのフェリー）：印と名前は下（駅の側）に寄せ、線は上へ向かって薄くする */
+.dl-track--up .dl-track__line { mask-image: linear-gradient(to top, #000 45%, transparent); }
+.dl-track--up .dl-track__mark { top: auto; bottom: 10px; }
+.dl-track--up .dl-track__label { align-self: flex-end; padding: 40px 0 34px 3px; }
+
+/* 線1本。縦の線は、線・印・縦書きの名前の順に横へ並べる */
+.dl-track {
+  --line: #999;
+  position: relative;
+  display: flex;
+  width: var(--pitch);
   color: var(--col-ink);
-  font-size: .75rem;
   text-decoration: none;
 }
-.dl-chip:hover { background: var(--col-secondary-lighter); }
-.dl-chip .dl-badge { font-size: .7rem; padding: 1px 8px; }
+.dl-track__line {
+  flex: none;
+  width: 6px;
+  margin-left: 4px;
+  background: var(--line);
+}
+.dl-track__mark {
+  position: absolute;
+  top: 10px;
+  left: 7px;
+  translate: -50% 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: .65rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--st-unknown);
+  background: var(--st-unknown-bg);
+  box-shadow: 0 0 0 2px var(--col-paper);
+}
+.dl-track__label {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 0 12px 3px;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+.dl-track__label .dl-badge { padding: 6px 1px; font-size: .65rem; letter-spacing: 0; }
+.dl-track:hover .dl-track__label { text-decoration: underline; }
+/* 状態：平常は実線、乱れは破線、運休は赤の破線、時間外・取得できずは灰の点線 */
+.is-normal .dl-track__mark { color: var(--st-normal); background: var(--st-normal-bg); }
+.is-delay .dl-track__mark { color: var(--st-delay); background: var(--st-delay-bg); }
+.is-suspended .dl-track__mark { color: var(--st-suspended); background: var(--st-suspended-bg); }
+.is-delay .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), var(--line) 0 10px, transparent 10px 16px); }
+.is-suspended .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), var(--st-suspended-bg) 0 6px, transparent 6px 12px); }
+.is-offhours .dl-track__line,
+.is-unknown .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), #bbb 0 3px, transparent 3px 7px); }
+/* 線の色（各社のコーポレートカラー・地下鉄のラインカラー） */
+.dl-track--jr { --line: var(--brand-jr); }
+.dl-track--airport { --line: var(--brand-airport); }
+.dl-track--okadama { --line: var(--brand-okadama); }
+.dl-track--expressway { --line: var(--brand-expressway); }
+.dl-track--chuobus { --line: var(--brand-chuobus); }
+.dl-track--hokto { --line: var(--brand-hokto); }
+.dl-track--silverferry { --line: var(--brand-silverferry); }
+.dl-track--sunflower { --line: var(--brand-sunflower); }
+.dl-track--snf { --line: var(--brand-snf); }
+.dl-track--taiheiyo { --line: var(--brand-taiheiyo); }
+/* 運行情報のない線（苫小牧駅〜苫小牧港のバス・タクシー）：細い灰色の線で、名前だけ */
+.is-plain .dl-track__line { width: 4px; margin-left: 5px; background: #bbb; }
+/* 灰色の線の名前は、区間の右に横書きで添える（縦書きにすると区間が長くなるため） */
+.dl-map__plain { flex-basis: 100%; font-size: .7rem; opacity: .75; }
+.dl-map__plain::before { content: ""; display: inline-block; width: 4px; height: 1em; margin-right: 6px; background: #bbb; vertical-align: -.15em; }
+.dl-track--nanboku { --line: var(--line-nanboku); }
+.dl-track--tozai { --line: var(--line-tozai); }
+.dl-track--toho { --line: var(--line-toho); }
+
+/* 駅の枝（札幌の地下鉄）。駅のカプセルの中、駅名の下に、横書きで1本ずつ並べる */
+.dl-map__branch { margin: 4px 0 0; }
+.dl-map__branch-name { font-size: .72rem; opacity: .75; }
+.dl-map__stubs { margin: 2px 0 0; padding: 0; list-style: none; }
+.dl-map__stubs .dl-track { --dir: 90deg; align-items: center; height: auto; width: auto; padding: 3px 0; }
+.dl-map__stubs .dl-track__line { width: 28px; height: 6px; margin: 0 12px 0 0; }
+.dl-map__stubs .dl-track__mark { top: 50%; left: 28px; translate: -50% -50%; }
+.dl-map__stubs .dl-track__label { writing-mode: horizontal-tb; padding: 0 0 0 6px; font-size: .78rem; }
+.dl-map__stubs .dl-track__label .dl-badge { padding: 1px 8px; }
+
+.dl-map__legend { margin: 0; font-size: .72rem; }
 /* まとめからカードへ移ったとき、見出しが画面の上端に隠れないようにする */
 .dl-card[id] { scroll-margin-top: 12px; }
 

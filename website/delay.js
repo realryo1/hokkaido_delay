@@ -354,12 +354,14 @@
   // すべて平常／一部に乱れ（平常の手段もある）／すべてに乱れ の3段階にする。集計はページ側だけで行う（Worker は変えていない）
   const worst = (list) =>
     ["suspended", "delay", "normal"].find((st) => list.includes(st)) || (list.includes("offhours") ? "offhours" : "unknown");
-  // 手段1つ：id はカードへのリンク先、pick は事業者のデータ → 状態、label は状態 → 表示（なければ共通の表記）
-  const means = (name, id, svcId, pick, label = {}) => ({ name, id, svcId, pick, label });
+  // 手段1つ：id はカードへのリンク先、pick は事業者のデータ → 状態、label は状態 → 表示（なければ共通の表記）、
+  // line は路線図の線の色（delay.css の .dl-track--{line}。なければ事業者の色）。路線図での置き方は routemap.js に名前で書く
+  const means = (name, id, svcId, pick, label = {}, line = svcId) => ({ name, id, svcId, pick, label, line });
   const ROAD = { suspended: "通行止あり", delay: "規制あり" };
   const JR = { delay: "遅れ・運休" }; // JR北海道の情報は遅れと運休の区別がない
   const SUMMARY = [
     {
+      id: "airport",
       name: "札幌 ⇄ 新千歳空港",
       means: [
         means("JR 快速エアポート", "jr", "jr", (s) => s.items?.find((i) => i.id === "airport")?.status, JR),
@@ -373,6 +375,7 @@
       ],
     },
     {
+      id: "otaru",
       name: "札幌 ⇄ 小樽",
       means: [
         means("JR 函館線", "jr", "jr", (s) => s.items?.find((i) => i.id === "hakochise")?.status, JR),
@@ -381,70 +384,199 @@
       ],
     },
     {
+      id: "subway",
       name: "札幌市内（地下鉄）",
       means: ["nanboku", "tozai", "toho"].map((line) =>
-        means({ nanboku: "南北線", tozai: "東西線", toho: "東豊線" }[line], "subway", "subway", (s) => s.items?.find((i) => i.id === line)?.status, {
-          delay: "遅れあり",
-          suspended: "見合わせ",
-        })
+        means(
+          { nanboku: "南北線", tozai: "東西線", toho: "東豊線" }[line],
+          "subway",
+          "subway",
+          (s) => s.items?.find((i) => i.id === line)?.status,
+          { delay: "遅れあり", suspended: "見合わせ" },
+          line
+        )
       ),
     },
     {
+      id: "honshu",
       name: "北海道 ⇄ 本州",
       means: [
-        means("新千歳空港の便", "airport", "airport", (s) => worst((s.groups || []).map((g) => g.status)), {
-          delay: "遅れ・欠航あり",
-          suspended: "大規模欠航",
-        }),
+        means(
+          "新千歳空港の便",
+          "airport",
+          "airport",
+          (s) => worst((s.groups || []).map((g) => g.status)),
+          { delay: "遅れ・欠航あり", suspended: "大規模欠航" }
+        ),
         // 丘珠空港は道内便が大半なので、本州行き（秋田・新潟など）の状況そのものではなく、空港全体の状態
-        means("丘珠空港の便", "okadama", "okadama", (s) => (s.groups?.length ? worst(s.groups.map((g) => g.status)) : "offhours"), {
-          delay: "遅れ・欠航あり",
-          suspended: "大規模欠航",
-        }),
+        means(
+          "丘珠空港の便",
+          "okadama",
+          "okadama",
+          (s) => (s.groups?.length ? worst(s.groups.map((g) => g.status)) : "offhours"),
+          { delay: "遅れ・欠航あり", suspended: "大規模欠航" }
+        ),
         means("JR 特急・新幹線", "jr", "jr", (s) =>
           worst((s.items || []).filter((i) => ["express", "shinkansen"].includes(i.id)).map((i) => i.status)),
           JR
         ),
         means("シルバーフェリー", "ferry", "silverferry", (s) => s.status, { delay: "欠航・遅延あり" }),
         means("さんふらわあ", "ferry", "sunflower", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
+        // 新日本海フェリーは小樽港（と苫小牧東港）から日本海側へ出るので、路線図（routemap.js）では小樽から上へ出して消えていく線にする
         means("新日本海フェリー", "ferry", "snf", (s) => s.status, { delay: "お知らせあり" }),
         means("太平洋フェリー", "ferry", "taiheiyo", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
       ],
     },
   ];
   const CHIP_LABEL = { normal: "平常", delay: "乱れあり", suspended: "運休あり", offhours: "時間外", unknown: "取得できず" };
+  // 路線図で線の上に付ける印
+  const MARK = { normal: "○", delay: "△", suspended: "×", offhours: "−", unknown: "？" };
+
+  // 行き先1つ分：手段ごとの状態と、行き先全体の判定
+  function judge(dest, services) {
+    const chips = dest.means
+      .filter((m) => services[m.svcId])
+      .map((m) => {
+        const svc = services[m.svcId];
+        // 取得に失敗している事業者は、前回のデータで判定せず「取得できず」にする
+        const st = (svc.ok && m.pick(svc)) || "unknown";
+        return { ...m, st, text: m.label[st] || CHIP_LABEL[st] };
+      });
+    // 時間外・取得できずは判定に使わない
+    const known = chips.map((c) => c.st).filter((st) => ["normal", "delay", "suspended"].includes(st));
+    let verdict = ["unknown", "判定できません"];
+    if (known.length && known.every((st) => st === "normal")) verdict = ["normal", "平常"];
+    else if (known.includes("normal")) verdict = ["delay", "一部に乱れ（平常の手段あり）"];
+    else if (known.length && known.every((st) => st === "suspended")) verdict = ["suspended", "すべて運休・通行止"];
+    else if (known.length) verdict = ["suspended", "すべての手段に乱れ"];
+    return { ...dest, chips, verdict };
+  }
+
+  // 手段1つ分の線（札幌の地下鉄の横の短い線）
+  const track = (c) =>
+    `<li><a class="dl-track dl-track--${esc(c.line)} is-${esc(c.st)}" href="#dl-${esc(c.id)}" aria-label="${esc(`${c.name}：${c.text}`)}">
+      <span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${MARK[c.st] || MARK.unknown}</span>
+      <span class="dl-track__label" aria-hidden="true">${esc(c.name)}${badge(c.st, c.text)}</span>
+    </a></li>`;
+
+  // 路線図は1つの grid に描く。列は「左の余白・線の列（col）・右の駅名と判定」、行は「駅・駅のあいだ」を交互に並べる
+  // （1行目は上へ出す線、駅 i は 2i+2 行目、駅 i と i+1 のあいだは 2i+3 行目）。線は行ごとに1つずつ置き、名前と印は1つの区間にだけ付ける
+  // 配線は routemap.js（window.DL_ROUTEMAP）。手段は名前で置き方を引き、置き方のない手段は描かない
+  function renderMap(groups) {
+    const map = window.DL_ROUTEMAP;
+    if (!map) return "";
+    const at = (name) => map.stations.findIndex((s) => s.name === name);
+    const placed = (c) => map.lines[c.name] && { via: [], ...c, ...map.lines[c.name] };
+    const extras = map.extras.map((x) => ({ via: [], ...x, line: "plain", st: "plain" }));
+    const lines = [...Object.values(groups).flatMap((g) => g.chips.map(placed).filter(Boolean)), ...extras];
+    const n = Math.max(1, ...lines.map((l) => l.col), ...map.stations.map((s) => s.right || 0));
+    const side = n + 2;
+    const stRow = (i) => 2 * i + 2;
+    const segRow = (i) => 2 * i + 3;
+    const cells = [];
+    // 右の列（駅のあいだの判定・灰色の線の名前など）は、行ごとにまとめてから描く
+    const sides = new Map();
+    const addSide = (row, html) => sides.set(row, [...(sides.get(row) || []), html]);
+    const piece = (l, row, mod) =>
+      cells.push(
+        `<span class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)} ${mod}" style="grid-area: ${row} / ${l.col + 1}" data-line="${esc(
+          l.name
+        )}"><span class="dl-track__line"></span></span>`
+      );
+
+    // 線が通る区間（駅 i と i+1 のあいだが i。上へ出す線は -1 ＝いちばん上の行）
+    const spans = new Map();
+    for (const l of lines) {
+      const a = at(l.from);
+      const b = l.up ? a : at(l.to);
+      if (a < 0 || (!l.up && b <= a)) continue;
+      spans.set(l, l.up ? [-1] : Array.from({ length: b - a }, (_, i) => a + i));
+    }
+    // 縦書きの名前を置く区間を選ぶ。名前の長さで区間の高さが決まるので、すでに長い区間に入れて全体を短くする
+    // （名前のない区間は、通過する線だけの短い区間になる）。置き場所が1つしかない線から決め、同じ高さなら始まりに近い区間
+    // 灰色の線の名前は縦書きにせず、右の列に横書きで添える
+    const size = (l) => [...l.name].length + (l.text ? [...l.text].length + 1 : 0);
+    const height = new Map();
+    const labelAt = new Map();
+    const order = [...spans.keys()].filter((l) => l.st !== "plain").sort((p, q) => spans.get(p).length - spans.get(q).length || size(q) - size(p));
+    for (const l of order) {
+      const segs = spans.get(l);
+      const h = (k) => height.get(k) || 0;
+      const k = segs.find((k) => h(k) >= size(l)) ?? segs.reduce((best, k) => (h(k) > h(best) ? k : best));
+      labelAt.set(l, k);
+      height.set(k, Math.max(h(k), size(l)));
+    }
+
+    // 駅ごとの停まる線の列（始まり・終わり・途中で停まる線）。駅のカプセルはこの列だけにかぶせ、通過する線はその外を通す
+    const stops = map.stations.map(() => []);
+    for (const [l, segs] of spans) {
+      const a = at(l.from);
+      const b = l.up ? a : at(l.to);
+      stops[a].push(l.col);
+      stops[b].push(l.col);
+      for (const v of l.via) if (at(v) > a && at(v) < b) stops[at(v)].push(l.col);
+      // 駅の行：始まりは下半分（上へ出す線は上半分）、終わりは上半分、途中は停まるなら駅の下・通過なら駅の上に重ねる
+      if (l.up) piece(l, stRow(a), "dl-track--top");
+      else {
+        piece(l, stRow(a), "dl-track--bottom");
+        piece(l, stRow(b), "dl-track--top");
+      }
+      for (let j = a + 1; j < b; j++) piece(l, stRow(j), l.via.includes(map.stations[j].name) ? "dl-track--stop" : "dl-track--pass");
+      const k = labelAt.get(l);
+      for (const s of segs) if (s !== k) piece(l, l.up ? 1 : segRow(s), "dl-track--more");
+      if (k === undefined) {
+        addSide(segRow(a), `<span class="dl-map__plain">${esc(l.name)}</span>`);
+        continue;
+      }
+      // 名前と印を置く区間
+      const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${
+        MARK[l.st] || MARK.unknown
+      }</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}${l.text ? badge(l.st, l.text) : ""}</span>`;
+      const attrs = `class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)}${l.up ? " dl-track--up" : ""}" style="grid-area: ${
+        l.up ? 1 : segRow(k)
+      } / ${l.col + 1}" data-line="${esc(l.name)}"`;
+      cells.push(`<a ${attrs} href="#dl-${esc(l.id)}" aria-label="${esc(`${l.name}：${l.text}`)}">${label}</a>`);
+    }
+    map.stations.forEach((st, i) => {
+      const row = stRow(i);
+      const b = st.branch && groups[st.branch];
+      const branch = b?.chips.length
+        ? `<div class="dl-map__branch">
+            <span class="dl-map__branch-name">${esc(b.name)}</span>
+            <ul class="dl-map__stubs">${b.chips.map(track).join("")}</ul>
+          </div>`
+        : "";
+      // 停まる線の左端の列から右端の列まで（停まる線がなければ全部の列）。駅名と枝はカプセルの中に入れ、入りきらなければ右へ広げる。
+      // 通過する線はカプセルの上に重なるので、駅名と枝は同じ形の箱をもう1枚、線より上に重ねて書く（下のカプセルの中身は大きさを決めるだけ）
+      // routemap.js の駅に left・right（列の番号）があれば、そちらを使う
+      const cols = stops[i];
+      const from = st.left ? st.left + 1 : cols.length ? Math.min(...cols) + 1 : 1;
+      const to = Math.max(from + 1, st.right ? st.right + 2 : cols.length ? Math.max(...cols) + 2 : n + 2);
+      const box = (cls, attrs = "") =>
+        `<div class="dl-map__stop${branch ? " dl-map__stop--tall" : ""}${cls}" style="grid-row: ${row}; grid-column: ${from} / ${to}"${attrs}>
+          <span class="dl-map__station">${esc(st.name)}</span>${branch}
+        </div>`;
+      cells.push(box("", ' aria-hidden="true"'), box(" dl-map__stop--label"));
+      if (st.sub) addSide(row, `<span class="dl-map__sub">${esc(st.sub)}</span>`);
+    });
+    for (const [id, above] of Object.entries(map.captions)) {
+      const g = groups[id];
+      const k = at(above);
+      if (!g || k < 0) continue;
+      addSide(segRow(k), `<span class="dl-map__name">${esc(g.name)}</span>${badge(g.verdict[0], g.verdict[1])}`);
+    }
+    if (lines.some((l) => l.up)) addSide(1, `<span class="dl-map__sub">${esc(map.topNote)}</span>`);
+    for (const [row, html] of sides) cells.push(`<div class="dl-map__side" style="grid-area: ${row} / ${side}">${html.join("")}</div>`);
+    return `<div class="dl-map" style="--n: ${n}">${cells.join("")}</div>`;
+  }
 
   function renderSummary(services) {
-    const rows = SUMMARY.map((dest) => {
-      const chips = dest.means
-        .filter((m) => services[m.svcId])
-        .map((m) => {
-          const svc = services[m.svcId];
-          // 取得に失敗している事業者は、前回のデータで判定せず「取得できず」にする
-          const st = (svc.ok && m.pick(svc)) || "unknown";
-          return { ...m, st };
-        });
-      if (!chips.length) return "";
-      // 時間外・取得できずは判定に使わない
-      const known = chips.map((c) => c.st).filter((st) => ["normal", "delay", "suspended"].includes(st));
-      let verdict = ["unknown", "判定できません"];
-      if (known.length && known.every((st) => st === "normal")) verdict = ["normal", "平常"];
-      else if (known.includes("normal")) verdict = ["delay", "一部に乱れ（平常の手段あり）"];
-      else if (known.length && known.every((st) => st === "suspended")) verdict = ["suspended", "すべて運休・通行止"];
-      else if (known.length) verdict = ["suspended", "すべての手段に乱れ"];
-      return `<li class="dl-sum">
-        <div class="dl-sum__head"><span class="dl-sum__name">${esc(dest.name)}</span>${badge(verdict[0], verdict[1])}</div>
-        <ul class="dl-sum__chips">${chips
-          .map(
-            (c) => `<li><a class="dl-chip" href="#dl-${esc(c.id)}">${esc(c.name)} ${badge(c.st, c.label[c.st] || CHIP_LABEL[c.st])}</a></li>`
-          )
-          .join("")}</ul>
-      </li>`;
-    }).join("");
+    const groups = Object.fromEntries(SUMMARY.map((dest) => [dest.id, judge(dest, services)]));
     return `<section class="dl-card dl-summary" id="dl-summary">
       <h2 class="dl-card__title">行き先ごとのまとめ</h2>
-      <ul class="dl-rows">${rows}</ul>
-      <p class="dl-card__note">各社の情報を行き先ごとに並べたものです。手段を押すと詳しいカードへ移ります。北都交通は都心線・大谷地線、JR は快速エアポート・函館線（札幌近郊）・特急・新幹線で見ています。</p>
+      ${renderMap(groups)}
+      <p class="dl-map__legend">○ 平常　△ 乱れあり　× 運休・通行止　− 時間外　？ 取得できず</p>
+      <p class="dl-card__note">各社の情報を行き先ごとに並べたものです。線を押すと詳しいカードへ移ります。駅の上に重なっている線は、その駅には寄りません。北都交通は都心線・大谷地線、JR は快速エアポート・函館線（札幌近郊）・特急・新幹線で見ています。</p>
     </section>`;
   }
 
@@ -467,6 +599,7 @@
         .join("")}</ul>
     </section>`;
 
+  let lastServices = {}; // 配線エディタで描き直すときに使う
   function render(data) {
     const banners = [];
     if (data.sample) {
@@ -485,7 +618,8 @@
     }
     $updated.textContent = `${hhmm(data.updated_at)} 更新${next}`;
     // まとめと各社のカードは、別々の入れ物に描く（あいだに置くものが増えても描き分けられるように）
-    $summary.innerHTML = renderSummary(data.services || {});
+    lastServices = data.services || {};
+    $summary.innerHTML = renderSummary(lastServices);
     // plan.js にシルバーフェリーの今の状況を渡す
     document.dispatchEvent(new CustomEvent("dl:data", { detail: data }));
     $sections.innerHTML =
@@ -650,7 +784,7 @@
     for (const $c of $cols) $c.classList.toggle("is-active", $c.dataset.col === name);
   };
   for (const $t of $tabs) $t.addEventListener("click", () => showCol($t.dataset.tab));
-  // まとめのチップ（#dl-jr など）が指すカードの列を出してから移る（隠れた列の中へはリンクで移れないため）
+  // まとめの線（#dl-jr など）が指すカードの列を出してから移る（隠れた列の中へはリンクで移れないため）
   document.addEventListener("click", (ev) => {
     const $a = ev.target.closest?.('a[href^="#dl-"]');
     const $target = $a && document.getElementById($a.getAttribute("href").slice(1));
@@ -664,4 +798,12 @@
   setInterval(() => document.visibilityState === "visible" && load(), REFRESH_MS);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && load());
   load();
+
+  // 配線エディタ（routemap-editor.js）：手元で ?edit を付けて開いたときだけ読み込む
+  if (local && params.has("edit")) {
+    window.DL_EDIT = { summary: SUMMARY, rerender: () => ($summary.innerHTML = renderSummary(lastServices)) };
+    const $s = document.createElement("script");
+    $s.src = "routemap-editor.js";
+    document.head.append($s);
+  }
 })();
