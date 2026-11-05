@@ -20,7 +20,8 @@
   --col-fan: #C2354F;
   --brand-gradient: linear-gradient(135deg, #9185de 0%, #e9a1eb 100%);
 
-  --font-base: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  /* 本文は端末のフォント（Webフォントは読み込みが重いので、見出し用の Dela Gothic One だけ） */
+  --font-base: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
   --font-display: "Dela Gothic One", var(--font-base);
 }
 
