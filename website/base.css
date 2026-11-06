@@ -30,6 +30,8 @@
 *::after { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; } /* iPhoneで端を越えて引っ張れる（ゴム紐のような）挙動を止める */
+html { scrollbar-width: none; } /* ページ全体のスクロールバーは、画面の幅によらず出さない（ホイール・タッチ・キーではスクロールできる） */
+html::-webkit-scrollbar { display: none; }
 html { touch-action: pan-x pan-y; } /* 二本指・ダブルタップでページ全体が拡大されないように（iPhoneで拡大のあと「繰り返しエラー」になることがある） */
 
 body {
