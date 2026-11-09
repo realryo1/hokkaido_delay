@@ -27,7 +27,7 @@
 | `src/sources/hokto.js` | 北都交通 空港連絡バス（`hokto.co.jp` のトップ） |
 | `src/sources/silverferry.js` | シルバーフェリー（`silverferry.jp` のトップ。欠航・遅延のときはリンク先のお知らせから便ごとの状況も） |
 | `src/sources/sunflower.js` | さんふらわあ 大洗〜苫小牧（`sunflower.co.jp` のトップ） |
-| `src/sources/snf.js` | 新日本海フェリー（`snf.jp` のトップのヘッダー） |
+| `src/sources/snf.js` | 新日本海フェリー（`snf.jp` のトップのヘッダーと、お知らせがあるときはお知らせの本文） |
 | `src/sources/taiheiyo.js` | 太平洋フェリー 名古屋・仙台〜苫小牧（`taiheiyo-ferry.co.jp` のトップの「運航状況」欄） |
 | `src/http.js` | 取得の共通設定（User-Agent、8秒のタイムアウト、`Last-Modified` の読み取り）と日本時間の時刻 |
 | `scripts/collect-local.mjs` | Cloudflare を使わずに収集だけ1回動かす |
@@ -39,7 +39,7 @@
 
 - Cron の間隔を変えるときは、`src/index.js` の `INTERVAL_MIN` も合わせる（`next_update_at` の計算に使う）
 - 空港の時刻は FIS の更新（:01, :06, …）の直後に取るため、Cron は :02, :07, … にしている
-- 事業者の文章（遅れの理由などの長文）は取り込まず、状態・便名・時刻などの事実だけを扱う
+- 事業者の文章（遅れの理由などの長文）はページに出さず、状態・便名・時刻などの事実だけを JSON に入れる。読むために取り込むのはよい。LLM がまとめた内容は事実なので出してよい
 - User-Agent にはプロジェクト名とサイトの URL を入れている（`src/http.js`）。ブラウザを装わない
 - 手元の確認で事業者サイトへ取りに行くときは、連続で実行しないこと
 

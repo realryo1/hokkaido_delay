@@ -113,10 +113,14 @@
     if (silver.status === "normal") return badge("normal", "通常運航");
     return badge("delay", "欠航・遅延あり（公式で確認）");
   }
-  // 新日本海フェリーは運航状況のお知らせが出ているかどうかだけ分かる
-  function snfBadge() {
+  // 新日本海フェリーの小樽発の便の今の状況。お知らせから読んだ欠航・遅れの便にあればそれを、なければお知らせの有無を使う
+  function snfBadge(s) {
     if (!snf) return "";
     if (!snf.ok) return badge("unknown", "状況を取得できず");
+    const hit = (snf.notices || [])
+      .flatMap((n) => n.sailings || [])
+      .find((x) => x.date === s.date && x.from === "小樽" && x.time === s.time);
+    if (hit) return badge(hit.status, hit.label);
     return snf.status === "normal" ? badge("normal", "お知らせなし") : badge("delay", "運航のお知らせあり（公式で確認）");
   }
   // 高速とまこまい号の運休の有無（中央バスの RSS。どの便かまでは見ない）
@@ -215,7 +219,7 @@
       sailing({
         title: snfTitle(s),
         ship: s.to,
-        live: snfBadge(),
+        live: snfBadge(s),
         lines: [`小樽へ移動し、連絡バス（${esc(s.bus)}）かタクシーでターミナルへ。出港の60分前まで`],
         arrive: snfArrive(s),
       })
@@ -264,7 +268,7 @@
       return sailing({
         title: snfTitle(s),
         ship: s.to,
-        live: snfBadge(),
+        live: snfBadge(s),
         late: leaveBy < base,
         lines: [verdict(leaveBy, base, "小樽駅（タクシー）"), `連絡バス：${esc(s.bus)}`],
         arrive: snfArrive(s),
