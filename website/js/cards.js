@@ -1,5 +1,5 @@
 // 各社のカード（#sections の中身）。main.js が JSON を受け取るたびに renderCards で描き直す
-import { esc, hhmm, md, badge, MARK } from "./util.js";
+import { esc, hhmm, md, badge, mark } from "./util.js";
 import { OFFICIAL, officialUrl, jrUrl, linkOr, SNF_LIST } from "./official.js";
 
 // 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す。フェリーの便ごとの状況は最初は閉じる）
@@ -31,7 +31,7 @@ function card(id, svc, body, timeText, note = "") {
 const TILE_LABEL = { normal: "平常", delay: "遅れあり", suspended: "運休", offhours: "時間外", unknown: "取得できず" };
 function tile({ name, status, label, href, line }) {
   const inner = `<span class="dl-tile__name">${esc(name.replace(/（.*$/, ""))}</span>
-      <span class="dl-tile__mark" aria-hidden="true">${MARK[status] || MARK.unknown}</span>
+      <span class="dl-tile__mark" aria-hidden="true">${mark(status)}</span>
       <span class="dl-tile__label">${esc(label || TILE_LABEL[status] || TILE_LABEL.unknown)}</span>`;
   const cls = `dl-tile is-${esc(status || "unknown")}${line ? ` dl-line--${esc(line)}` : ""}`;
   return `<li>${href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="${cls}">${inner}</div>`}</li>`;

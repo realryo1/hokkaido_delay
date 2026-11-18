@@ -1,5 +1,5 @@
 // 行き先ごとのまとめ（#summary の中身）。各カードのデータから、行き先ごとに「使える手段があるか」をまとめ、縦の路線図に描く
-import { esc, badge, MARK } from "./util.js";
+import { esc, badge, mark } from "./util.js";
 import { ROUTEMAP } from "./routemap.js";
 
 // 手段どうしは代わりになるので、すべて平常／一部に乱れ（平常の手段もある）／すべてに乱れ の3段階にする。集計はページ側だけで行う（Worker は変えていない）
@@ -104,7 +104,7 @@ function judge(dest, services) {
 // 手段1つ分の線（札幌の地下鉄の横の短い線）
 const track = (c) =>
   `<li><a class="dl-track dl-track--${esc(c.line)} is-${esc(c.st)}" href="#dl-${esc(c.id)}" aria-label="${esc(`${c.name}：${c.text}`)}">
-      <span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${MARK[c.st] || MARK.unknown}</span>
+      <span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(c.st)}</span>
       <span class="dl-track__label" aria-hidden="true">${esc(c.name)}${badge(c.st, c.text)}</span>
     </a></li>`;
 
@@ -173,9 +173,7 @@ function renderMap(groups) {
     for (const s of segs) if (s !== k) piece(l, l.up ? 1 : segRow(s), "dl-track--more");
     if (k === undefined) continue;
     // 名前と印を置く区間
-    const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${
-      MARK[l.st] || MARK.unknown
-    }</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}${l.text ? badge(l.st, l.text) : ""}</span>`;
+    const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(l.st)}</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}${l.text ? badge(l.st, l.text) : ""}</span>`;
     const attrs = `class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)}${l.up ? " dl-track--up" : ""}" ${cell(
       l.up ? 1 : segRow(k),
       l.col + 1
@@ -211,7 +209,15 @@ export function renderSummary(services) {
   return `<section class="dl-card dl-summary" id="dl-summary">
       <h2 class="dl-card__title">行き先ごとのまとめ</h2>
       ${renderMap(groups)}
-      <p class="dl-map__legend">○ 平常　△ 乱れあり　× 運休・通行止　− 時間外　？ 取得できず</p>
+      <p class="dl-map__legend">${[
+        ["normal", "平常"],
+        ["delay", "乱れあり"],
+        ["suspended", "運休・通行止"],
+        ["offhours", "時間外"],
+        ["unknown", "取得できず"],
+      ]
+        .map(([st, text]) => `<span>${mark(st)}${text}</span>`)
+        .join("")}</p>
       <p class="dl-card__note">各社の情報を行き先ごとに並べたものです。線を押すと詳しいカードへ移ります。駅の上に重なっている線は、その駅には寄りません。北都交通は都心線・大谷地線、JR は快速エアポート・函館線（札幌近郊）・特急・新幹線で見ています。</p>
     </section>`;
 }

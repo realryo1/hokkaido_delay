@@ -17,8 +17,18 @@ export const LABEL = {
   unknown: "不明",
   offhours: "サービス時間外",
 };
-// 状態の印（路線図の線の上と、カードのタイル）。読み上げでは横の状態の言葉を読むので、印は飾りとして扱う
-export const MARK = { normal: "○", delay: "△", suspended: "×", offhours: "−", unknown: "？" };
+// 状態の印（路線図の線の上・カードのタイル・凡例）。文字では線が細いので、太い線の SVG で描く（色は delay.css の .dl-mark--*。
+// ○ 緑・△ 濃い黄色・× 赤・− 灰。取得できずは「？」の文字）。読み上げでは横の状態の言葉を読むので、印は飾りとして扱う
+const MARK_SHAPE = {
+  normal: '<circle cx="12" cy="12" r="7.5"/>',
+  delay: '<path d="M12 4.5 20 18.5H4z"/>',
+  suspended: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  offhours: '<path d="M6 12h12"/>',
+};
+export const mark = (status) =>
+  MARK_SHAPE[status]
+    ? `<svg class="dl-mark dl-mark--${status}" viewBox="0 0 24 24" aria-hidden="true">${MARK_SHAPE[status]}</svg>`
+    : `<span class="dl-mark dl-mark--unknown" aria-hidden="true">？</span>`;
 // 状態のバッジ（delay.css の .dl-badge--{status}）。label がなければ状態ごとの決まった表記
 export const badge = (status, label) =>
   `<span class="dl-badge dl-badge--${esc(status)}">${esc(label || LABEL[status] || LABEL.unknown)}</span>`;
