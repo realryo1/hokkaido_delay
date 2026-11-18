@@ -230,7 +230,7 @@ function renderHokto(svc) {
 // フェリー：4社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に注意と公式リンクを出す
 //   シルバーフェリー：定型の文言（通常運航しています／欠航または遅延便があります）
 //   さんふらわあ：自由記述の欄から判定した状態だけ（文章は表示しない）
-//   新日本海フェリー：運航状況のお知らせの件数と日付（題名は表示しない）。お知らせから読んだ欠航・遅れの便
+//   新日本海フェリー：運航状況のお知らせの件数と日付（題名は表示しない）。お知らせから読んだ欠航・遅れの便と、LLM が読んだ要約・補足・臨時便など
 //   太平洋フェリー：さんふらわあと同じく、自由記述の欄から判定した状態だけ
 const FERRIES = ["silverferry", "sunflower", "snf", "taiheiyo"];
 // シルバーフェリーの便ごとの行の色（delay.css の .dl-ship--*。plan.js の SHIP_CLASS と同じ）。代船などは灰色
@@ -264,18 +264,35 @@ function ferryRow(id, svc) {
     msg = (svc.notices || [])
       .map((n) => `<a href="${esc(linkOr("snf", n.url, SNF_LIST))}" target="_blank" rel="noopener">お知らせ（${esc(md(n.date))}）</a>`)
       .join("　");
-    // お知らせから読んだ欠航・遅れの便（日付・出発港・時刻・行き先）。臨時便・代替便などは読んでいないのでリンク先へ
-    const list = (svc.notices || []).flatMap((n) => n.sailings || []);
-    const unread = (svc.notices || []).some((n) => n.unread > 0 || (n.sailings === null && n.url));
-    if (list.length || unread) {
-      const times = (svc.notices || []).map((n) => n.time).filter(Boolean).sort();
+    // お知らせから読んだ便。欠航・遅れの便は正規表現で読んだもの。補足・臨時便などの便・要約・案内は LLM が読んだもの（印を付ける）
+    const notices = svc.notices || [];
+    const list = notices.flatMap((n) => n.sailings || []);
+    const unread = notices.some((n) => n.unread > 0 || (n.sailings === null && n.url));
+    const llms = notices.map((n) => n.llm).filter((l) => l?.ok);
+    if (list.length || unread || llms.length) {
+      const times = notices.map((n) => n.time).filter(Boolean).sort();
       const at = times.length ? `・${md(times.at(-1))} ${hhmm(times.at(-1))} 現在` : "";
+      const auto = `<span class="dl-auto">Haiku5.5による補足</span>`;
+      // 補足（出港定刻・到着遅れ見込み・一部区間だけ運航・船名・バイク乗船不可など）。LLM の便は行に印があるので補足には付けない
+      const note = (s) => {
+        const xs = [];
+        if (s.depart) xs.push(`出港${s.depart}`);
+        if (s.arrive) xs.push(`到着${s.arrive}`);
+        if (s.runs_to?.length) xs.push(`${s.runs_to.join("・")}へは運航`);
+        if (s.ship) xs.push(s.ship);
+        xs.push(...(s.notes || []));
+        return xs.length ? `<span class="dl-sailing-note">${esc(xs.join("・"))}${s.source === "llm" ? "" : ` ${auto}`}</span>` : "";
+      };
+      const about = llms
+        .map((l) => `<li class="dl-llm">${auto}<span>${esc(l.summary)}${l.general?.length ? `<br>${l.general.map(esc).join("<br>")}` : ""}</span></li>`)
+        .join("");
+      const nBad = list.filter((s) => s.status !== "normal").length;
       extra = `<details class="dl-sailings"${ui.sailingsOpen ? " open" : ""}>
-          <summary>欠航・遅れの便（${list.length}便${esc(at)}）</summary>
-          <ul class="dl-subitems">${list
+          <summary>欠航・遅れの便（${nBad}便${esc(at)}）</summary>
+          <ul class="dl-subitems">${about}${list
             .map(
               (s) => `<li class="dl-ship dl-ship--other">${badge(s.status, s.label)}
-                <span>${esc(md(s.date))} ${esc(s.from)}→${esc(s.to)}${s.via?.length ? `（${esc(s.via.join("・"))}経由）` : ""} ${esc(s.time)}発</span></li>`
+                <span>${esc(md(s.date))} ${esc(s.from)}→${esc(s.to)}${s.via?.length ? `（${esc(s.via.join("・"))}経由）` : ""} ${esc(s.time)}発${s.source === "llm" ? ` ${auto}` : ""}${note(s)}</span></li>`
             )
             .join("")}${unread ? `<li>${badge("delay", "お知らせで確認")}<span>読み取れない書き方の便があります</span></li>` : ""}</ul>
         </details>`;
@@ -296,7 +313,7 @@ function renderFerry(services) {
   return `<section class="dl-card" id="dl-ferry">
       <h2 class="dl-card__title">フェリー（北海道航路）<span class="dl-card__time">${esc(hhmm(services[FERRIES.find((id) => services[id])].fetched_at))} 取得</span></h2>
       <ul class="dl-rows">${rows.join("")}</ul>
-      <p class="dl-card__note">各社のトップページの運航情報から状態だけを表示しています（シルバーフェリーと新日本海フェリーは、お知らせが出ているときだけ欠航・遅れの便を読み取ります）。理由や臨時便・代替便などの詳しい案内は各社のリンク先へ。</p>
+      <p class="dl-card__note">各社のトップページの運航情報から状態だけを表示しています（シルバーフェリーと新日本海フェリーは、お知らせが出ているときだけ欠航・遅れの便を読み取ります）。新日本海フェリーの「Haiku5.5による補足」は、お知らせを AI（Claude Haiku 5.5）で読み取った要約・補足・臨時便などで、誤りがあることがあります。詳しい案内は各社のリンク先へ。</p>
     </section>`;
 }
 

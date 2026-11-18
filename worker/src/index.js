@@ -3,6 +3,7 @@
 // - fetch：KV の JSON を CORS ヘッダー付きで返す（閲覧が増えても事業者へのアクセスは Cron の回数のまま）
 // - /health：外部の監視サービス向け。異常があれば 503 を返す（KV を読むだけで、事業者へは取りに行かない）
 import { collect, jstIso } from "./collect.js";
+import { addSnfNotes } from "./snfNotes.js";
 
 const KEY = "status";
 // wrangler.toml の crons と合わせる（次回の予定時刻 next_update_at の計算に使う）
@@ -97,6 +98,12 @@ export default {
       (async () => {
         const prev = await env.DELAY_KV.get(KEY, "json").catch(() => null);
         const next = await collect(prev);
+        // 新日本海フェリーのお知らせの補足を LLM で読む（本文が変わったときだけ呼ぶ）。失敗しても収集の結果は保存する
+        try {
+          await addSnfNotes(env, next.services.snf, prev?.services?.snf);
+        } catch (e) {
+          next.meta.source_errors.push({ id: "snf", message: `LLM: ${String(e?.message || e).slice(0, 180)}` });
+        }
         // scheduledTime はこの回の予定時刻（例 21:02:00）。次の回はその INTERVAL_MIN 分後
         next.next_update_at = jstIso(new Date(event.scheduledTime + INTERVAL_MIN * 60000));
         await env.DELAY_KV.put(KEY, JSON.stringify(next));

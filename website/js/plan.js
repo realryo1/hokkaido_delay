@@ -116,13 +116,15 @@ export function initPlan() {
     if (silver.status === "normal") return badge("normal", "通常運航");
     return badge("delay", "欠航・遅延あり（公式で確認）");
   }
-  // 新日本海フェリーの小樽発の便の今の状況。お知らせから読んだ欠航・遅れの便にあればそれを、なければお知らせの有無を使う
+  // 新日本海フェリーの小樽発の便の今の状況。お知らせから読んだ便にあればそれを、なければお知らせの有無を使う
+  // 正規表現で読んだ便（確かな情報）を優先し、なければ LLM が読んだ便（出発港変更・正規表現で読めない書き方の欠航など）
   function snfBadge(s) {
     if (!snf) return "";
     if (!snf.ok) return badge("unknown", "状況を取得できず");
-    const hit = (snf.notices || [])
+    const same = (snf.notices || [])
       .flatMap((n) => n.sailings || [])
-      .find((x) => x.date === s.date && x.from === "小樽" && x.time === s.time);
+      .filter((x) => x.date === s.date && x.from === "小樽" && x.time === s.time);
+    const hit = same.find((x) => x.source !== "llm") || same[0];
     if (hit) return badge(hit.status, hit.label);
     return snf.status === "normal" ? badge("normal", "お知らせなし") : badge("delay", "運航のお知らせあり（公式で確認）");
   }

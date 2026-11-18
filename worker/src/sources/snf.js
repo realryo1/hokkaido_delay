@@ -8,7 +8,7 @@
 //   欠航                                      ← 見出し（状態）
 //   ◆ 新潟 ～ 小樽                            ← 航路の小見出し（あってもなくてもよい。状態は引き継ぐ）
 //   ・1月9日（金）苫小牧東港23:30発→敦賀行     ← 1行が1便
-// の形がほとんど。正規表現で読むのは日付・出発港・時刻・行き先（経由地）だけで、状態は見出しの語から分類したラベルにする（行の後ろの補足は LLM で読む予定）。
+// の形がほとんど。正規表現で読むのは日付・出発港・時刻・行き先（経由地）だけで、状態は見出しの語から分類したラベルにする（行の後ろの補足は LLM で読む。src/snfNotes.js）。
 // 欠航・遅れ以外の見出し（臨時便運航・代替便のご案内・運航船舶変更・出発港変更・通常運航など）の下の便と、振替先（⇒）の行は読まない。
 // 日付で始まるか行頭が「・」「●」で「発」を含むのに読めない行（「8月30日（日）小樽23:30発→舞鶴行　欠航」のような書き方）は unread に数え、
 // ページでは「お知らせで確認」と出す。
@@ -17,6 +17,10 @@ import { get } from "../http.js";
 const PAGE = "https://www.snf.jp/";
 const LIST = "https://www.snf.jp/info-list/?info_group=operation";
 const MAX_NOTICES = 3; // 1回に取りに行くお知らせの数の上限
+const MAX_TEXT = 6000; // LLM に渡す本文の文字数の上限
+
+// お知らせの本文（URL → 本文）。LLM（snfNotes.js）に渡すためだけに持ち、JSON には入れない（事業者の文章はページに出さないため）
+export const noticeTexts = new Map();
 
 const pad = (n) => String(n).padStart(2, "0");
 // 全角の数字・コロン・かっこを半角／全角にそろえ、空白を1つにまとめる
@@ -47,7 +51,7 @@ const HEAD_SKIP = /^[・⇒◆【※（(]|[。：:]$/;
 // お知らせのページから欠航・遅れの便を読む。posted はお知らせの日付（"2026-01-09"。年を決めるのに使う）
 export function parseNotice(html, posted) {
   const start = html.indexOf('class="entry-content');
-  if (start < 0) return { time: null, sailings: [], unread: 0 };
+  if (start < 0) return { time: null, sailings: [], unread: 0, text: "" };
   let end = html.indexOf("</article>", start);
   if (end < 0) end = start + 30000;
   const lines = html
@@ -81,8 +85,10 @@ export function parseNotice(html, posted) {
   let afterSailing = false;
   // 本文の枠にはサイドバーの記事一覧も入っているので、投稿日の行（2026/1/9）より後だけを読む
   const from = lines.findIndex((l) => /^\d{4}\/\d{1,2}\/\d{1,2}$/.test(l));
+  const body = []; // LLM に渡す本文
   for (const line of lines.slice(from + 1)) {
     if (/^【[^】]*(手続|お願い|取消|問い?合わ?せ|予約)/.test(line)) break; // 【変更・取消の手続き】【お客様へお願い】以降は便の案内ではない
+    if (/[ぁ-んァ-ヶ一-龠]/.test(line)) body.push(line); // 英語の併記は除く
     const bullet = /^[・●]/.test(line) && /\d月|発/.test(line); // 「●欠航」は見出し
     const dated = /^\d{1,2}月\d{1,2}日/.test(line);
     if (bullet || dated) {
@@ -107,7 +113,7 @@ export function parseNotice(html, posted) {
     heads.push(line.replace(/^●\s*/, ""));
     state = classify(heads);
   }
-  return { time, sailings, unread };
+  return { time, sailings, unread, text: body.join("\n").slice(0, MAX_TEXT) };
 }
 
 export async function fetchSnf() {
@@ -125,13 +131,16 @@ export async function fetchSnf() {
   const warnings = notices.length || !/>運航状況</.test(box) ? [] : ["新日本海フェリー: 運航状況のお知らせが読めない"];
 
   // お知らせの本文（自社サイトのものだけ）。取れなくてもトップの状態は出す（sailings: null は「便ごとの状況は読めていない」）
+  noticeTexts.clear();
   for (const n of notices.slice(0, MAX_NOTICES)) {
     n.time = null;
     n.sailings = null;
     n.unread = 0;
     if (!/^https?:\/\/www\.snf\.jp\/[\w./-]+$/.test(n.url)) continue;
     try {
-      Object.assign(n, parseNotice(await get(n.url.replace(/^http:/, "https:")), n.date));
+      const { text, ...parsed } = parseNotice(await get(n.url.replace(/^http:/, "https:")), n.date);
+      Object.assign(n, parsed);
+      if (text) noticeTexts.set(n.url, text);
     } catch {
       n.sailings = null;
     }

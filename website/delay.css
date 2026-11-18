@@ -682,6 +682,10 @@ button { font: inherit; color: inherit; }
 .dl-row .dl-warn { flex-basis: 100%; margin: 4px 0 0; }
 .dl-sailings { flex-basis: 100%; }
 .dl-sailings summary { cursor: pointer; font-size: .78rem; font-weight: 700; }
+/* 新日本海フェリーのお知らせを LLM で読み取った内容の印・補足・要約 */
+.dl-auto { display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px dashed currentColor; border-radius: 4px; font-size: .64rem; font-weight: 400; opacity: .7; white-space: nowrap; }
+.dl-llm > .dl-auto { margin-left: 0; }
+.dl-sailing-note { display: block; font-size: .72rem; opacity: .8; }
 /* 航空会社の行（便・系列）：背景にごく薄く機体色を敷き、便の一覧は左端の社名の列を機体色で塗る。
    行全体を塗りつぶすと状態のバッジが埋もれるため、濃い色は社名の列だけにしている。
    色は便名の先頭3文字（運航会社コード）か、系列の id（ana / jal / other）で決める。

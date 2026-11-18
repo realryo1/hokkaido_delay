@@ -186,10 +186,18 @@
           "url": "https://www.snf.jp/",
           "time": "2027-02-06T10:00:00+09:00",
           "unread": 1,
+          "llm": {
+            "hash": "sample",
+            "ok": true,
+            "model": "claude-haiku-5-5",
+            "summary": "サンプル：海上荒天のため2月6日の苫小牧東発秋田行が欠航（新潟へは運航）。小樽発新潟行と苫小牧東発敦賀行は到着が遅れる見込み。新潟発苫小牧東行の臨時便を運航する。",
+            "general": ["サンプル：2月6日の北海道発本州行は手数料なしで変更・取消できる"]
+          },
           "sailings": [
-            { "date": "2027-02-06", "from": "苫小牧東", "to": "秋田", "via": [], "time": "19:30", "status": "suspended", "label": "欠航" },
-            { "date": "2027-02-06", "from": "小樽", "to": "新潟", "via": [], "time": "16:45", "status": "delay", "label": "遅れ" },
-            { "date": "2027-02-06", "from": "苫小牧東", "to": "敦賀", "via": ["秋田", "新潟"], "time": "19:30", "status": "delay", "label": "遅れ" }
+            { "date": "2027-02-06", "from": "苫小牧東", "to": "秋田", "via": [], "time": "19:30", "status": "suspended", "label": "欠航", "runs_to": ["新潟"] },
+            { "date": "2027-02-06", "from": "小樽", "to": "新潟", "via": [], "time": "16:45", "status": "delay", "label": "遅れ", "depart": "定刻", "arrive": "遅れ見込み", "notes": ["バイク乗船不可"] },
+            { "date": "2027-02-06", "from": "苫小牧東", "to": "敦賀", "via": ["秋田", "新潟"], "time": "19:30", "status": "delay", "label": "遅れ" },
+            { "date": "2027-02-06", "from": "新潟", "to": "苫小牧東", "via": [], "time": "19:00", "status": "normal", "label": "臨時便", "source": "llm" }
           ]
         }
       ]
