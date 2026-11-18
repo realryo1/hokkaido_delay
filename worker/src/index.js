@@ -139,6 +139,13 @@ export default {
       return json(JSON.stringify(h), h.ok ? 200 : 503, "no-store");
     }
     if (url.pathname !== "/" && url.pathname !== "/status.json") return json('{"error":"not found"}', 404, "no-store");
+    // 作者の確認用：環境変数 ALLOW_IPS（カンマ区切り。ダッシュボードの Variables and Secrets で設定し、リポジトリには書かない）の IP からは、
+    // Origin・Referer がなくても（ブラウザで URL を直接開いても）返す
+    const allowIp = (env.ALLOW_IPS || "").split(",").map((s) => s.trim()).filter(Boolean).includes(request.headers.get("CF-Connecting-IP"));
+    if (allowIp && !origin) {
+      const body = await readStatus(env);
+      return body ? json(body, 200, "no-store") : json('{"error":"not ready"}', 503, "no-store");
+    }
     if (!origin) return json('{"error":"forbidden"}', 403, "no-store");
     // ページが位置情報の確認に進めるよう、CORS ヘッダーを付けて理由（region）を返す
     if (!local && !inJapan(request, url)) return json('{"error":"region"}', 403, "no-store", cors(origin));
