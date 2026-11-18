@@ -101,7 +101,15 @@ function schema(op) {
   return {
     type: "object",
     properties: {
-      summary: { type: "string" },
+      summary: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { month: { type: "integer" }, day: { type: "integer" }, label: { type: "string" }, text: { type: "string" } },
+          required: ["month", "day", "label", "text"],
+          additionalProperties: false,
+        },
+      },
       known: {
         type: "array",
         items: { type: "object", properties: { id: { type: "integer" }, ...extra, mismatch: { type: "string" } }, required: ["id"], additionalProperties: false },
@@ -135,8 +143,10 @@ ${op.rules}
 - arrive_at：到着（入港）の予定や実際の時刻が書かれていれば（例「4月21日(火)03:15入港予定」「22:00頃着予定」）、その日付と時刻（日付が書かれていなければ、時刻から考えて出港の日か翌日）。到着済・入港済なら done を true。なければ省く
 - ship：船名が書かれていれば（例 "けやき"）。なければ省く
 - notes：本文にあれば ${op.notes.map((n) => `「${n}」`).join("")}（arrive を付けた便には「到着遅れの可能性」は付けない）。なければ省く
-- general：特定の便に結び付かない運航の案内（例「2月19日の北海道発本州行は手数料なしで変更・取消できる」）を、1つ60字以内で。どの便が欠航・運航するかは sailings に書き、general には書かない。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先・「○時現在の情報」は入れない
-- summary：運航への影響の要点を120字以内の日本語で、日付の順に。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先は入れない`;
+- summary：運航への影響の要点を、日付ごとの項目で。便の欠航・運航・遅れがある日には、すべて1日に1項目を作る（label は「11月18日」）。何日にもまたがること（例「船舶を入れ替えて運航する」）は、それとは別に、その日付をまとめた1項目（label は「11月19日・20日」）にする（まとめた項目があっても、その日の便のことはその日の項目に書く）。便の欠航・運航を書くときは、一覧の状態と本文の両方で確かめたことだけを、どの港発のどの便か（深夜便・時刻など）で書く。「6便欠航」「計4便」のような便の数は書かない（数え間違えるため）。month・day は label の最初の日。text は要点を60字以内で、label の日付は text に繰り返さない。理由（低気圧・津波など）は最初の項目の text に入れる。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先は入れない
+- general：日付に結び付かない運航の案内（例「その他の便も遅れる場合がある」や、期間を決めた出港時刻の変更）を、1つ60字以内で。summary に書いたことは繰り返さない。どの便が欠航・運航するかは sailings に書き、general には書かない。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先・「○時現在の情報」は入れない`;
+// 指示（プロンプト・形）の版。本文のハッシュに混ぜるので、上げると今出ているお知らせも1回だけ読み直す
+const PROMPT_VERSION = 2;
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -208,7 +218,13 @@ export function validate(op, raw, text, posted, regex = []) {
     sailings.push({ ...base, from, to, kind: s.kind, ...extras(s, base) });
   }
   const general = (Array.isArray(raw?.general) ? raw.general : []).map((g) => clip(g, 80)).filter(Boolean).slice(0, 5);
-  return { summary: clip(raw?.summary, 160), known, sailings, general };
+  // 要約は日付ごとの項目（{ date, label, text }）。日付の順に並べ、日付が読めない項目は捨てる
+  const summary = (Array.isArray(raw?.summary) ? raw.summary : [])
+    .filter((x) => x.month >= 1 && x.month <= 12 && x.day >= 1 && x.day <= 31 && clip(x.text, 1))
+    .map((x) => ({ date: iso(+x.month, +x.day), label: clip(x.label, 20) || `${+x.month}月${+x.day}日`, text: clip(x.text, 80) }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
+  return { summary, known, sailings, general };
 }
 
 // 正規表現の便に LLM の補足を重ね、正規表現にない便を source: "llm" で足す（状態は正規表現の便のまま）
@@ -275,7 +291,7 @@ async function ask(client, op, text, regex) {
 // 1つのお知らせを読む。holder は llm を付けて sailings に重ねる先（新日本海フェリーはお知らせ、ほかはサービス）
 async function readOne(client, id, holder, text, posted, prevHolder, onUsage) {
   const op = OPS[id];
-  const hash = await sha256(text);
+  const hash = await sha256(`${PROMPT_VERSION}\n${text}`);
   const old = prevHolder?.llm?.hash === hash ? prevHolder.llm : null;
   let llm = old;
   // キーがなくて呼べなかったとき（nokey）は、キーを置いたら次の回に呼ぶ。
