@@ -324,11 +324,13 @@ button { font: inherit; color: inherit; }
 
 /* ---------- 行き先ごとのまとめ（縦の路線図） ----------
    1つの grid に描く（summary.js の renderMap）。列は「左の余白・線の列（--n 本）」（右の判定などの列は2026-11-19にやめた）、行は駅と駅のあいだを交互に並べる。
-   駅（.dl-map__stop）は停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。線（.dl-track）は行ごとに置き、名前は縦書きで線の右に。状態は線の描き方と印（○△×）で示す */
+   駅（.dl-map__stop）は停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。線（.dl-track）は行ごとに置く太い帯で、名前は帯の中に縦書きで。状態は帯の模様と印（○△×）で示す */
+/* 線の列はカードの幅いっぱいに均等に広げる。線は太い帯（--band）で、名前と状態は帯の中に縦書きで重ねる */
 .dl-map {
-  --pitch: 28px;
+  --pitch: 34px;
+  --band: 24px;
   display: grid;
-  grid-template-columns: 6px repeat(var(--n), var(--pitch));
+  grid-template-columns: 6px repeat(var(--n), minmax(var(--pitch), 1fr));
   align-items: center;
   margin: 4px 0 18px;
 }
@@ -439,9 +441,35 @@ button { font: inherit; color: inherit; }
 .dl-track--sunflower { --line: var(--brand-sunflower); }
 .dl-track--snf { --line: var(--brand-snf); }
 .dl-track--taiheiyo { --line: var(--brand-taiheiyo); }
-/* 運行情報のない線（苫小牧駅〜苫小牧港のバス・タクシー）：細い灰色の線で、名前だけ */
+/* 運行情報のない線（苫小牧駅〜苫小牧港のバス・タクシー）：細い灰色の線 */
 .is-plain .dl-track__line { width: 4px; margin-left: 5px; background: #bbb; }
-/* 灰色の線の名前は、区間の右に横書きで添える（縦書きにすると区間が長くなるため） */
+
+/* 路線図の中の線（札幌の地下鉄の横の短い線は上のまま）：帯・印・名前を1つのマスに重ね、帯の中に印と縦書きの名前を入れる。
+   名前の部分は会社の色で塗りつぶして白い字にし、帯の文字のない部分で状態の模様（破線など）を見せる */
+.dl-map > .dl-track { display: grid; justify-items: start; width: auto; }
+.dl-map > .dl-track > * { grid-area: 1 / 1; }
+.dl-map > .dl-track .dl-track__line { width: var(--band); margin-left: 0; }
+.dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: calc((var(--band) - 4px) / 2); }
+.dl-map > .dl-track .dl-track__mark {
+  position: relative;
+  z-index: 1;
+  top: auto;
+  left: auto;
+  translate: none;
+  align-self: start;
+  margin: 4px 0 0 calc((var(--band) - 18px) / 2);
+}
+.dl-map > .dl-track .dl-track__label {
+  align-self: start;
+  justify-content: flex-start;
+  width: var(--band);
+  padding: 28px 0 8px;
+  border-radius: 4px;
+  background: var(--line);
+  color: #fff;
+}
+.dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - 18px) / 2); }
+.dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 28px; }
 .dl-track--nanboku { --line: var(--line-nanboku); }
 .dl-track--tozai { --line: var(--line-tozai); }
 .dl-track--toho { --line: var(--line-toho); }
