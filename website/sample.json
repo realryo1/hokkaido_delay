@@ -180,7 +180,19 @@
       "source_time": null,
       "status": "delay",
       "list_url": "https://www.snf.jp/info-list/?info_group=operation",
-      "notices": [{ "date": "2027-02-06", "url": "https://www.snf.jp/" }]
+      "notices": [
+        {
+          "date": "2027-02-06",
+          "url": "https://www.snf.jp/",
+          "time": "2027-02-06T10:00:00+09:00",
+          "unread": 1,
+          "sailings": [
+            { "date": "2027-02-06", "from": "苫小牧東", "to": "秋田", "via": [], "time": "19:30", "status": "suspended", "label": "欠航" },
+            { "date": "2027-02-06", "from": "小樽", "to": "新潟", "via": [], "time": "16:45", "status": "delay", "label": "遅れ" },
+            { "date": "2027-02-06", "from": "苫小牧東", "to": "敦賀", "via": ["秋田", "新潟"], "time": "19:30", "status": "delay", "label": "遅れ" }
+          ]
+        }
+      ]
     },
     "taiheiyo": {
       "name": "太平洋フェリー（名古屋・仙台〜苫小牧）",
