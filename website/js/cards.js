@@ -234,25 +234,28 @@ function sailingNote(s, shipInLine) {
   xs.push(...(s.notes || []));
   return xs.length ? `<span class="dl-sailing-note">${esc(xs.join("・"))}${s.source === "llm" ? "" : ` ${AUTO}`}</span>` : "";
 }
-// 便の一覧（開閉できる）。llms は LLM の結果（要約・案内を先頭に出す）。unread は読めない書き方の便があるか
-// shipInLine は、正規表現で読んだ船名を line で行に出しているか（補足に重ねて出さない）
-// 見出しは「title（count便・at）」
-function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, shipInLine }) {
-  if (!list.length && !unread && !llms.length) return "";
-  // 便は出港の日時の順に並べる（お知らせは出発港ごとに書かれているので、そのままだと時間が行ったり来たりする）。同じ日時は出発港の順
-  list = [...list].sort((a, b) => `${a.date} ${a.time} ${a.from}`.localeCompare(`${b.date} ${b.time} ${b.from}`));
-  // 要約は先頭に「理由：」、日付ごとの行（「11月18日：…」）、日付に結び付かない案内は最後に「その他：」で出す（要約が文字列だった版の結果もそのまま出す）
-  const about = llms
+// LLM の要約（開閉の外、社名の行のすぐ下に出す）。先頭に「理由：」、日付ごとの行（「11月18日：…」）、
+// 日付に結び付かない案内は最後に「その他：」（要約が文字列だった版の結果もそのまま出す）
+const llmSummary = (llms) =>
+  llms
     .map((l) => {
       const reason = l.reason ? [`理由：${esc(l.reason)}`] : [];
       const days = Array.isArray(l.summary) ? l.summary.map((x) => `${esc(x.label)}：${esc(x.text)}`) : [esc(l.summary)];
       const other = (l.general || []).map((g, i) => `${i ? "" : "その他："}${esc(g)}`);
-      return `<li class="dl-llm">${AUTO}<span>${[...reason, ...days, ...other].join("<br>")}</span></li>`;
+      return `<p class="dl-llm">${AUTO}<span>${[...reason, ...days, ...other].join("<br>")}</span></p>`;
     })
     .join("");
-  return `<details class="dl-sailings"${ui.sailingsOpen ? " open" : ""}>
+// 要約と、便の一覧（開閉できる）。llms は LLM の結果。unread は読めない書き方の便があるか
+// shipInLine は、正規表現で読んだ船名を line で行に出しているか（補足に重ねて出さない）
+// 見出しは「title（count便・at）」
+function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, shipInLine }) {
+  const about = llmSummary(llms);
+  if (!list.length && !unread) return about;
+  // 便は出港の日時の順に並べる（お知らせは出発港ごとに書かれているので、そのままだと時間が行ったり来たりする）。同じ日時は出発港の順
+  list = [...list].sort((a, b) => `${a.date} ${a.time} ${a.from}`.localeCompare(`${b.date} ${b.time} ${b.from}`));
+  return `${about}<details class="dl-sailings"${ui.sailingsOpen ? " open" : ""}>
       <summary>${esc(title)}（${count}便${at ? `・${esc(at)}` : ""}）</summary>
-      <ul class="dl-subitems">${about}${list
+      <ul class="dl-subitems">${list
         .map((s) => `<li class="dl-ship dl-ship--${esc(rowClass(s))}">${badge(s.status, s.label)}<span>${line(s)}${s.source === "llm" ? ` ${AUTO}` : ""}${sailingNote(s, shipInLine)}</span></li>`)
         .join("")}${unread ? `<li>${badge("delay", "お知らせで確認")}<span>読み取れない書き方の便があります</span></li>` : ""}</ul>
     </details>`;
