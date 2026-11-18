@@ -80,7 +80,7 @@ button { font: inherit; color: inherit; }
   --st-suspended-bg: var(--col-fan);
   --st-unknown: #555;
   --st-unknown-bg: #e6e6e6;
-  /* 状態の印（SVG）の色：○ 緑・△ 濃い黄色・× 赤・− 灰。印は白い丸の上に描く */
+  /* 状態の印（SVG）の色：○ 緑・△ 濃い黄色・× 赤・− 灰。路線図の線の上では白い丸の上に描く（タイルは丸なし） */
   --mark-normal: #2e9e44;
   --mark-delay: #d29b00;
   --mark-suspended: var(--col-fan);
@@ -698,10 +698,7 @@ span.dl-mark--unknown { display: grid; place-items: center; color: var(--mark-of
   width: 2.6rem;
   aspect-ratio: 1;
   margin: 4px 0;
-  padding: .3rem;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  background: var(--col-paper);
+  font-size: 2rem;
 }
 .dl-tile__label { font-size: .68rem; font-weight: 700; }
 .dl-tile.is-delay .dl-tile__label { color: var(--st-delay); }
