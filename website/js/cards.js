@@ -6,15 +6,11 @@ import { OFFICIAL, officialUrl, jrUrl, linkOr, SNF_LIST } from "./official.js";
 // 便の一覧は新千歳空港（airport）と丘珠空港（okadama）で別々に持つ。変えるのは main.js のイベント
 export const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: true };
 
-// 取得に失敗した事業者：前回のデータに注意書きと公式リンクを添える
-function staleNote(id, svc) {
-  if (svc.ok) return "";
-  const last = svc.last_success_at ? `（最終取得 ${hhmm(svc.last_success_at)}）` : "";
-  return `<div class="dl-warn">
-      <p>情報元との通信が一時的に途切れています${esc(last)}。最新の状況は公式案内を確認してください。</p>
-      <a class="dl-warn__btn" href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)} 公式の運行情報</a>
-    </div>`;
-}
+// 取得に失敗している事業者：見出し（フェリーは社名）の横に小さく「情報途絶（最終取得 07:57）」と出す。
+// 状態は前回のものを出さず「？ 情報途絶」にする。公式へは見出し（社名）のリンクから
+const STALE = "情報途絶";
+const staleTag = (svc) =>
+  svc.ok ? "" : `<span class="dl-stale">${STALE}${svc.last_success_at ? `（最終取得 ${esc(hhmm(svc.last_success_at))}）` : ""}</span>`;
 
 // カードの備考。カードの中には出さず、renderCards が最後の「備考」の枠にまとめて出す（縦の長さを減らし、状態を先に見せるため）
 let notes = [];
@@ -22,11 +18,10 @@ let notes = [];
 // id（jr / subway / airport など）でカードにコーポレートカラーを付ける（delay.css の .dl-card--{id}）
 // 見出しが公式の運行情報へのリンクを兼ねる。note は備考（最後の枠に回す）
 function card(id, svc, body, timeText, note = "") {
-  const time = timeText ? `<span class="dl-card__time">${esc(timeText)}</span>` : "";
+  const time = svc.ok ? (timeText ? `<span class="dl-card__time">${esc(timeText)}</span>` : "") : staleTag(svc);
   if (note && (svc.ok || svc.last_success_at)) notes.push({ name: svc.name, note });
   return `<section class="dl-card dl-card--${esc(id)}" id="dl-${esc(id)}">
       <h2 class="dl-card__title"><a href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)}</a>${time}</h2>
-      ${staleNote(id, svc)}
       ${svc.ok || svc.last_success_at ? body : ""}
     </section>`;
 }
@@ -41,9 +36,11 @@ function tile({ name, status, label, href, line }) {
   const cls = `dl-tile is-${esc(status || "unknown")}${line ? ` dl-line--${esc(line)}` : ""}`;
   return `<li>${href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="${cls}">${inner}</div>`}</li>`;
 }
-const tiles = (list) => `<ul class="dl-tiles">${list.join("")}</ul>`;
-// タイルの下に並べる明細（高速道路の重要な規制の区間、中央バスの系統、地下鉄の案内）。ないときは出さない
-const details = (items) => (items.length ? `<ul class="dl-subitems">${items.join("")}</ul>` : "");
+// タイルを並べる。取得に失敗しているときは、前回の状態ではなく「？ 情報途絶」にする
+const tiles = (svc, list) =>
+  `<ul class="dl-tiles">${list.map((o) => tile(svc.ok ? o : { ...o, status: "unknown", label: STALE })).join("")}</ul>`;
+// タイルの下に並べる明細（高速道路の重要な規制の区間、中央バスの系統）。ないとき・取得に失敗しているときは出さない
+const details = (svc, items) => (svc.ok && items.length ? `<ul class="dl-subitems">${items.join("")}</ul>` : "");
 
 // JR北海道：本日の状態だけ（明日は出さない）。函館線・千歳線と学園都市線は「札幌近郊」の1枚にまとめ、悪い方の状態を出す
 const WORSE = { suspended: 4, delay: 3, unknown: 2, normal: 1, offhours: 0 };
@@ -57,17 +54,14 @@ function renderJr(svc) {
     const worst = near.reduce((a, b) => ((WORSE[b.status] ?? 2) > (WORSE[a.status] ?? 2) ? b : a));
     return [{ ...worst, id: near[0].id, name: "札幌近郊" }];
   });
-  const body = tiles(list.map((i) => tile({ name: i.name, status: i.status, label: i.status === "delay" ? "遅れ・運休" : "", href: jrUrl(i.id) })));
+  const body = tiles(svc, list.map((i) => ({ name: i.name, status: i.status, label: i.status === "delay" ? "遅れ・運休" : "", href: jrUrl(i.id) })));
   const note = "運休・30分以上の遅れ・運転見合わせがあるかどうかだけです。深夜はサービス時間外です。詳しくは各線区のリンク先へ。";
   return card("jr", svc, body, svc.source_time, note);
 }
 
-// 地下鉄：路線ごとのタイル。平常でないときだけ、札幌市の案内の文言を下に出す
+// 地下鉄：路線ごとのタイル（札幌市の案内の文言は状態と同じことなので出さない）
 function renderSubway(svc) {
-  const items = svc.items || [];
-  const body =
-    tiles(items.map((i) => tile({ name: i.name, status: i.status, line: i.id }))) +
-    details(items.filter((i) => i.status !== "normal" && i.message).map((i) => `<li><b>${esc(i.name)}</b><span>${esc(i.message)}</span></li>`));
+  const body = tiles(svc, (svc.items || []).map((i) => ({ name: i.name, status: i.status, line: i.id })));
   return card("subway", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
 }
 
@@ -104,10 +98,11 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
       if (g.diverted) parts.push(`引き返し等 ${g.diverted}`);
       if (g.delayed) parts.push(`遅れ ${g.delayed}`);
       if (g.done_late) parts.push(`30分以上遅れて出発・到着済 ${g.done_late}`);
+      // 取得に失敗しているときは、前回の数字を出さず「情報途絶」にする
       return `<li class="dl-row dl-airrow dl-air--${esc(g.id)}">
           <span class="dl-row__name">${esc(g.name)}</span>
-          ${badge(g.status, label)}
-          <span class="dl-row__msg">${esc(parts.join(" / "))}</span>
+          ${svc.ok ? badge(g.status, label) : badge("unknown", STALE)}
+          ${svc.ok ? `<span class="dl-row__msg">${esc(parts.join(" / "))}</span>` : ""}
         </li>`;
     })
     .join("");
@@ -144,7 +139,7 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
     ? flightTable("departure", "出発", "行先") + flightTable("arrival", "到着", "出発地")
     : `<p class="dl-card__note">これから出発・到着する便に、遅れ・欠航はありません。</p>`;
   const current = all.length - doneCount;
-  const list = all.length
+  const list = all.length && svc.ok
     ? `<details class="dl-flights" data-card="${id}"${ui.flightsOpen[id] ? " open" : ""}>
           <summary>遅れ・欠航の便（${current}便）</summary>
           ${toggle}
@@ -176,7 +171,7 @@ function renderExpressway(svc) {
       ...(minor ? [`<li><span><b>${esc(name)}</b> そのほかの規制（車線規制・除雪作業など） ${minor}件</span></li>`] : []),
     ];
   });
-  const body = tiles(roads.map((r) => tile({ name: r.name, status: r.status, label: ROAD_LABEL[r.status] }))) + details(items);
+  const body = tiles(svc, roads.map((r) => ({ name: r.name, status: r.status, label: ROAD_LABEL[r.status] }))) + details(svc, items);
   const note = "表示まで10〜15分ほど遅れることがあります。通行止・チェーン規制は急に変わるので、出発前に必ず公式の交通情報を確認してください。";
   return card("expressway", svc, body, svc.source_time ? `${hhmm(svc.source_time)} 時点` : "", note);
 }
@@ -191,7 +186,7 @@ function renderChuobus(svc) {
           ${i.direction ? `（${esc(i.direction)}）` : ""}${i.time ? ` ${esc(i.time)}発` : ""}</span></li>`
     )
   );
-  const body = tiles(groups.map((g) => tile({ name: g.name, status: g.status, label: g.status === "normal" ? "運休情報なし" : "運休あり" }))) + details(items);
+  const body = tiles(svc, groups.map((g) => ({ name: g.name, status: g.status, label: g.status === "normal" ? "運休情報なし" : "運休あり" }))) + details(svc, items);
   const note = "運休だけで、道路状況などによる遅れは載りません。運休の理由や詳しい便は各系統のリンク先へ。";
   return card("chuobus", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", note);
 }
@@ -209,10 +204,9 @@ function renderHokto(svc) {
     : "";
   const body =
     tiles(
-      items
-        .filter((i) => !HOKTO_MINOR.includes(i.id))
-        .map((i) => tile({ name: i.name, status: i.status, label: i.label, href: linkOr("hokto", i.url, OFFICIAL.hokto.url) }))
-    ) + minorLine;
+      svc,
+      items.filter((i) => !HOKTO_MINOR.includes(i.id)).map((i) => ({ name: i.name, status: i.status, label: i.label, href: linkOr("hokto", i.url, OFFICIAL.hokto.url) }))
+    ) + (svc.ok ? minorLine : "");
   return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", "運休の有無だけで、道路状況などによる遅れは載りません。");
 }
 
@@ -323,13 +317,12 @@ function ferryRow(id, svc) {
       line: (s) => `${esc(md(s.date))} ${esc(s.from)}→${esc(s.to)}${s.via?.length ? `（${esc(s.via.join("・"))}経由）` : ""} ${esc(s.time)}発`,
     });
   }
-  const shown = svc.ok || svc.last_success_at;
+  // 取得に失敗しているときは、社名の横に「情報途絶（最終取得 …）」、状態は「情報途絶」にして、前回のお知らせ・便は出さない
   return `<li class="dl-row">
-      <span class="dl-row__name dl-line dl-line--${esc(id)}"><a href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)}</a></span>
-      ${shown ? badge(svc.status, label) : ""}
-      ${shown && msg ? `<span class="dl-row__msg">${msg}</span>` : ""}
-      ${shown ? extra : ""}
-      ${staleNote(id, svc)}
+      <span class="dl-row__name dl-line dl-line--${esc(id)}"><a href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)}</a>${staleTag(svc)}</span>
+      ${svc.ok ? badge(svc.status, label) : badge("unknown", STALE)}
+      ${svc.ok && msg ? `<span class="dl-row__msg">${msg}</span>` : ""}
+      ${svc.ok ? extra : ""}
     </li>`;
 }
 function renderFerry(services) {

@@ -733,7 +733,6 @@ a.dl-tile:hover .dl-tile__name { text-decoration: underline; }
 .dl-line--sunflower { --line: var(--brand-sunflower); }
 .dl-line--snf { --line: var(--brand-snf); }
 .dl-line--taiheiyo { --line: var(--brand-taiheiyo); }
-.dl-row .dl-warn { flex-basis: 100%; margin: 4px 0 0; }
 .dl-sailings { flex-basis: 100%; }
 .dl-sailings summary { cursor: pointer; font-size: .78rem; font-weight: 700; }
 /* 新日本海フェリーのお知らせを LLM で読み取った内容の印・補足・要約 */
@@ -819,24 +818,8 @@ tr.dl-air--FDA > td.dl-airname {
   .dl-flights { overflow-x: auto; }
 }
 
-/* 取得失敗時の注意と公式リンク */
-.dl-warn {
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--col-link-lighter);
-  font-size: .8rem;
-}
-.dl-warn p { margin: 0 0 8px; }
-.dl-warn__btn {
-  display: inline-block;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--col-link);
-  color: #fff;
-  font-weight: 700;
-  text-decoration: none;
-}
+/* 取得に失敗している事業者：見出し（フェリーは社名）の横に小さく「情報途絶（最終取得 07:57）」 */
+.dl-stale { margin-left: 8px; font-size: .72rem; font-weight: 700; color: var(--st-delay); white-space: nowrap; }
 
 /* 各カードの備考をまとめた最後の枠（カードの中には備考を出さない） */
 .dl-notes dl { margin: 0; font-size: .72rem; }
