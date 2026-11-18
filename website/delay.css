@@ -369,7 +369,7 @@ button { font: inherit; color: inherit; }
 .dl-map__stop--label .dl-map__station { padding: 0 4px; border-radius: 6px; background: var(--col-paper); }
 .dl-map__stop--label .dl-map__branch { pointer-events: auto; }
 /* 横に枝を出す駅（札幌の地下鉄）は、参考にした路線図の乗換駅のように縦に長くして、枝もカプセルの中に入れる */
-.dl-map__stop--tall { flex-direction: column; align-items: flex-start; padding: 6px 14px 8px; border-radius: 16px; }
+.dl-map__stop--tall { flex-direction: column; align-items: center; padding: 6px 14px 8px; border-radius: 16px; }
 .dl-map__station { font-size: .95rem; font-weight: 700; line-height: 1.2; white-space: nowrap; }
 /* 駅の行の線：始まりは下半分、終わりは上半分、通過は駅の上に重ねる */
 .dl-map > .dl-track { align-self: stretch; }
@@ -484,8 +484,7 @@ button { font: inherit; color: inherit; }
 .dl-track--toho { --line: var(--line-toho); }
 
 /* 駅の枝（札幌の地下鉄）。駅のカプセルの中、駅名の下に、横に並べて真ん中にそろえる */
-.dl-map__branch { align-self: stretch; margin: 4px 0 0; text-align: center; }
-.dl-map__branch-name { font-size: .72rem; opacity: .75; }
+.dl-map__branch { align-self: stretch; margin: 4px 0 0; }
 .dl-map__stubs { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 14px; margin: 2px 0 0; padding: 0; list-style: none; }
 .dl-map__stubs .dl-track { --dir: 90deg; align-items: center; height: auto; width: auto; padding: 3px 0; }
 .dl-map__stubs .dl-track__line { width: 28px; height: 6px; margin: 0 12px 0 0; }

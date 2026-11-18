@@ -190,7 +190,6 @@ function renderMap(groups) {
     const b = st.branch && groups[st.branch];
     const branch = b?.chips.length
       ? `<div class="dl-map__branch">
-            <span class="dl-map__branch-name">${esc(b.name)}</span>
             <ul class="dl-map__stubs">${b.chips.map(track).join("")}</ul>
           </div>`
       : "";
