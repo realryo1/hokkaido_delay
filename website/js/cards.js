@@ -2,9 +2,9 @@
 import { esc, hhmm, md, badge, MARK } from "./util.js";
 import { OFFICIAL, officialUrl, jrUrl, linkOr, SNF_LIST } from "./official.js";
 
-// 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す）
+// 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す。フェリーの便ごとの状況は最初は閉じる）
 // 便の一覧は新千歳空港（airport）と丘珠空港（okadama）で別々に持つ。変えるのは main.js のイベント
-export const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: true };
+export const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: false };
 
 // 取得に失敗している事業者：見出し（フェリーは社名）の横に小さく「情報途絶（最終取得 07:57）」と出す。
 // 状態は前回のものを出さず「？ 情報途絶」にする。公式へは見出し（社名）のリンクから
