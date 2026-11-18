@@ -5,6 +5,8 @@
 // - どの便が欠航・遅れかは正規表現で読み、これを確かな情報とする。LLM はその便の状態を変えられない
 // - LLM は補足（出港定刻・出港や到着の時刻の変更・到着遅れ見込み・一部区間だけ運航・船名・バイク乗船不可など）と、
 //   正規表現で読まない便（臨時便・代替便・振替先・船舶変更・出発港変更・正規表現で読めない書き方の便）、便を特定しない案内、要約を返す
+// - 正規表現で読んだ便を番号付きで渡し、番号ごとの補足（known）と、一覧にない便（sailings）を返してもらう。
+//   一覧と本文が食い違うと LLM が見たら、llm.known に mismatch として残す（ページにも /health にも出さない。空振りが多いため）
 // - LLM が足した便は、日付・時刻が本文にあるときだけ使い、source: "llm" を付ける（ページで印を付ける）
 // - 平常時は呼ばない（本文が渡されない）。本文のハッシュが前回と同じなら呼ばずに前回の結果を使う。
 //   失敗は同じ本文で MAX_FAILS 回まで続けて試し、そのあとは1時間に1回
@@ -76,14 +78,9 @@ const AT = {
 };
 
 // 構造化出力の形（返答はこの形の JSON になる）
+// known：正規表現で読んだ便（番号付きで渡す）への補足と食い違い。sailings：渡した一覧にない便
 function schema(op) {
-  const sailing = {
-    month: { type: "integer" },
-    day: { type: "integer" },
-    from: { type: "string", enum: op.ports },
-    time: { type: "string" },
-    to: { type: "string", enum: op.ports },
-    kind: { type: "string", enum: op.kinds },
+  const extra = {
     depart: { type: "string", enum: ["定刻", "遅れ"] },
     depart_at: AT,
     arrive: { type: "string", enum: ["遅れ見込み"] },
@@ -92,27 +89,48 @@ function schema(op) {
     ship: { type: "string" },
     notes: { type: "array", items: { type: "string", enum: op.notes } },
   };
+  const sailing = {
+    month: { type: "integer" },
+    day: { type: "integer" },
+    from: { type: "string", enum: op.ports },
+    time: { type: "string" },
+    to: { type: "string", enum: op.ports },
+    kind: { type: "string", enum: op.kinds },
+    ...extra,
+  };
   return {
     type: "object",
     properties: {
       summary: { type: "string" },
+      known: {
+        type: "array",
+        items: { type: "object", properties: { id: { type: "integer" }, ...extra, mismatch: { type: "string" } }, required: ["id"], additionalProperties: false },
+      },
       sailings: {
         type: "array",
         items: { type: "object", properties: sailing, required: ["month", "day", "from", "time", "to", "kind"], additionalProperties: false },
       },
       general: { type: "array", items: { type: "string" } },
     },
-    required: ["summary", "sailings", "general"],
+    required: ["summary", "known", "sailings", "general"],
     additionalProperties: false,
   };
 }
 
-const system = (op) => `あなたはフェリーの運航のお知らせから事実だけを取り出す係です。ユーザーが渡すお知らせ（${op.name}）を読み、決められた形の JSON で返してください。
+// ユーザーの発言：お知らせの本文と、正規表現で読んだ便の一覧（番号付き）
+function userText(text, regex) {
+  const list = (regex || []).map((s, i) => `${i + 1}: ${s.date} ${s.from}→${s.to} ${s.time}発 ${s.label}`).join("\n");
+  return `【お知らせの本文】\n${text}\n\n【正規表現で読んだ便】\n${list || "（なし）"}`;
+}
+
+const system = (op) => `あなたはフェリーの運航のお知らせから事実だけを取り出す係です。ユーザーが渡すお知らせ（${op.name}）の本文と、プログラムが正規表現で本文から読んだ便の一覧（番号付き）を読み、決められた形の JSON で返してください。
 - 本文に書かれていないことは書かない。推測しない
-- sailings：本文に出てくる便をすべて。month・day は本文の日付、time は時刻表どおりの出港時刻（例 "23:30"。早出し・遅れなどで変わった時刻は time ではなく depart_at に入れる）、from・to は港（${op.ports.join("・")}。「港」は付けない）。1行に複数の便が書かれていれば、便ごとに分ける
+- known：一覧の便のうち、下の補足（depart・depart_at・arrive・arrive_at${op.runsTo ? "・runs_to" : ""}・ship・notes）が本文にある便を、一覧の番号（id）を付けて返す。補足がない便は返さない。一覧の日付・港・時刻・状態が本文と食い違っていれば、mismatch にどう違うかを40字以内で書く（例「本文では欠航」）。言い方が違うだけ（「通常運航予定」と「運航予定」、「入港遅延」と「遅れ見込み」など）は食い違いではない。食い違いがなければ mismatch は省く
+- sailings：一覧にない便だけ。一覧は読み落としや書き間違いの読み飛ばしがあるので、本文の便を一つずつ一覧と照らし、ないものは必ずここに入れる（日付の数字が欠けているなど書き間違いの行も、本文から分かる範囲で入れる。出港時刻が書かれておらず到着時刻しか分からない便は入れない）。month・day は本文の日付、time は時刻表どおりの出港時刻（例 "23:30"。早出し・遅れなどで変わった時刻は time ではなく depart_at に入れる）、from・to は港（${op.ports.join("・")}。「港」は付けない）。1行に複数の便が書かれていれば、便ごとに分ける
 ${op.rules}
-- depart：「出港定刻」「定刻出港」なら定刻、出港が遅れる・遅れたなら遅れ。書かれていなければ省く
-- depart_at：定刻と違う出港の時刻が書かれていれば（例「3日13:00出港予定」「14:20出港済」）、その日付と時刻。出港済なら done を true。なければ省く
+- 補足は、その便について本文にはっきり書かれていることだけ。本文に書かれていない補足は付けない（欠航の便に出港の補足を付けない。「入港遅延」は到着の遅れで、出港の遅れではない）
+- depart：その便の出港について「出港定刻」「定刻出港」とあれば定刻、「出港遅れ」「○時発（○時間遅延）」のように出港が遅れると書かれていれば遅れ。書かれていなければ省く
+- depart_at：時刻表と違う出港の時刻が書かれていれば（例「3日13:00出港予定」「14:20出港済」）、その日付と時刻。出港済なら done を true。時刻表どおりの時刻は入れない。なければ省く
 - arrive：到着（入港）が遅れる見込み・予定と書かれていれば遅れ見込み。「遅れの可能性」「遅延の可能性」だけなら arrive は付けず notes の「到着遅れの可能性」にする。なければ省く
 - arrive_at：到着（入港）の予定や実際の時刻が書かれていれば（例「4月21日(火)03:15入港予定」「22:00頃着予定」）、その日付と時刻（日付が書かれていなければ、時刻から考えて出港の日か翌日）。到着済・入港済なら done を true。なければ省く
 - ship：船名が書かれていれば（例 "けやき"）。なければ省く
@@ -128,7 +146,8 @@ async function sha256(text) {
 }
 
 // 返答を確かめて、使えるものだけを残す。日付・時刻が本文にない便は捨てる。posted はお知らせの日付（年を決めるのに使う）
-export function validate(op, raw, text, posted) {
+// regex は渡した正規表現の便の一覧。known は番号ではなく日付・港・時刻で持つ（正規表現を直して順番が変わっても前回の結果を使えるように）
+export function validate(op, raw, text, posted, regex = []) {
   const year = +posted.slice(0, 4);
   const month = +posted.slice(5, 7);
   const iso = (m, d) => `${m < month - 6 ? year + 1 : m > month + 6 ? year - 1 : year}-${pad(m)}-${pad(d)}`;
@@ -146,6 +165,33 @@ export function validate(op, raw, text, posted) {
     if (!t || !(a.month >= 1 && a.month <= 12 && a.day >= 1 && a.day <= 31) || !inText(t)) return null;
     return { at: `${iso(+a.month, +a.day)}T${pad(t[1])}:${t[2]}`, done: !!a.done };
   };
+  const clip = (v, n) => String(v || "").replace(/\s+/g, " ").trim().slice(0, n);
+  // 補足（本文で確かめられるものだけ）。base は便の日付と時刻（時刻表どおりの出港時刻を depart_at として返してきたら捨てる）
+  const extras = (s, base) => {
+    const item = {};
+    if (s.depart === "定刻" || s.depart === "遅れ") item.depart = s.depart;
+    const dep = at(s.depart_at);
+    if (dep && dep.at !== `${base.date}T${base.time}`) item.depart_at = dep;
+    if (s.arrive === "遅れ見込み") item.arrive = s.arrive;
+    const arr = at(s.arrive_at);
+    if (arr) item.arrive_at = arr;
+    const runs = (Array.isArray(s.runs_to) ? s.runs_to : []).map(port).filter(Boolean);
+    if (op.runsTo && runs.length) item.runs_to = [...new Set(runs)];
+    const ship = String(s.ship || "").trim();
+    if (ship && ship.length <= 12 && flat.includes(ship.replace(/\s+/g, ""))) item.ship = ship;
+    const notes = (Array.isArray(s.notes) ? s.notes : []).filter((x) => op.notes.includes(x) && !(item.arrive && x === "到着遅れの可能性"));
+    if (notes.length) item.notes = [...new Set(notes)];
+    return item;
+  };
+  const known = [];
+  for (const k of Array.isArray(raw?.known) ? raw.known : []) {
+    const r = regex[+k.id - 1];
+    if (!r) continue;
+    const item = { date: r.date, from: r.from, time: r.time, to: r.to, ...extras(k, r) };
+    const mismatch = clip(k.mismatch, 60);
+    if (mismatch) item.mismatch = mismatch;
+    if (Object.keys(item).length > 4) known.push(item);
+  }
   const sailings = [];
   for (const s of Array.isArray(raw?.sailings) ? raw.sailings : []) {
     const m = +s.month;
@@ -156,30 +202,30 @@ export function validate(op, raw, text, posted) {
     if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31 && from && to && from !== to && t && op.kinds.includes(s.kind))) continue;
     // 本文に「日付」と「時刻」があるか（新日本海フェリーは「港＋時刻」。「／19日（火）秋田港6:15発」のような書き方もあるので、日は「19日」で見る）
     if (!flat.includes(`${d}日`) || !inText(t, op.portBeforeTime ? `${from}港?` : "")) continue;
-    const item = { date: iso(m, d), from, to, time: `${pad(t[1])}:${t[2]}`, kind: s.kind };
-    if (s.depart === "定刻" || s.depart === "遅れ") item.depart = s.depart;
-    const dep = at(s.depart_at);
-    if (dep) item.depart_at = dep;
-    if (s.arrive === "遅れ見込み") item.arrive = s.arrive;
-    const arr = at(s.arrive_at);
-    if (arr) item.arrive_at = arr;
-    const runs = (Array.isArray(s.runs_to) ? s.runs_to : []).map(port).filter(Boolean);
-    if (op.runsTo && runs.length) item.runs_to = [...new Set(runs)];
-    const ship = String(s.ship || "").trim();
-    if (ship && ship.length <= 12 && flat.includes(ship.replace(/\s+/g, ""))) item.ship = ship;
-    const notes = (Array.isArray(s.notes) ? s.notes : []).filter((x) => op.notes.includes(x) && !(item.arrive && x === "到着遅れの可能性"));
-    if (notes.length) item.notes = [...new Set(notes)];
-    sailings.push(item);
+    // 出港時刻であること（時刻のすぐ後に「発」「便発」がある）。到着時刻（「20:15着」）を出港時刻と取り違えた便を捨てる
+    if (!new RegExp(`0?${+t[1]}:${t[2]}便?発`).test(flat)) continue;
+    const base = { date: iso(m, d), time: `${pad(t[1])}:${t[2]}` };
+    sailings.push({ ...base, from, to, kind: s.kind, ...extras(s, base) });
   }
-  const clip = (v, n) => String(v || "").replace(/\s+/g, " ").trim().slice(0, n);
   const general = (Array.isArray(raw?.general) ? raw.general : []).map((g) => clip(g, 80)).filter(Boolean).slice(0, 5);
-  return { summary: clip(raw?.summary, 160), sailings, general };
+  return { summary: clip(raw?.summary, 160), known, sailings, general };
 }
 
 // 正規表現の便に LLM の補足を重ね、正規表現にない便を source: "llm" で足す（状態は正規表現の便のまま）
 export function merge(sailings, llm) {
   const out = (sailings || []).map((s) => ({ ...s }));
   const regex = out.slice();
+  // 番号で返ってきた補足（日付・港・時刻・行き先で正規表現の便に重ねる）。
+  // 食い違い（mismatch）は llm.known に残すだけで、便には付けない（2026-11-19 の試験では空振りが多かったため。正規表現の読み間違いを探す手がかりにする）
+  for (const k of llm.known || []) {
+    const hit = regex.find((s) => s.date === k.date && s.from === k.from && s.time === k.time && s.to === k.to);
+    if (!hit) continue;
+    const { date, from, time, to, mismatch, ...extra } = k;
+    if (extra.runs_to && [hit.to, ...(hit.via || [])].every((p) => extra.runs_to.includes(p))) delete extra.runs_to;
+    if (hit.ship) delete extra.ship;
+    Object.assign(hit, extra);
+  }
+  // 一覧にない便として返ってきたもの。正規表現の便と同じ日・港・時刻なら補足として重ねる
   for (const x of llm.sailings) {
     const extra = {};
     for (const k of ["depart", "depart_at", "arrive", "arrive_at", "runs_to", "ship", "notes"]) if (x[k]) extra[k] = x[k];
@@ -211,14 +257,14 @@ export function merge(sailings, llm) {
   return out;
 }
 
-async function ask(client, op, text) {
+async function ask(client, op, text, regex) {
   const res = await client.messages.create({
     model: LLM.model,
     // 考える段階（既定で有効）も max_tokens に含まれる
     max_tokens: 8000,
     output_config: { effort: LLM.effort, format: { type: "json_schema", schema: schema(op) } },
     system: system(op),
-    messages: [{ role: "user", content: text }],
+    messages: [{ role: "user", content: userText(text, regex) }],
   });
   if (res.stop_reason !== "end_turn") throw new Error(`返答が途中で終わった（stop_reason: ${res.stop_reason}）`);
   const out = res.content.find((b) => b.type === "text")?.text;
@@ -241,9 +287,11 @@ async function readOne(client, id, holder, text, posted, prevHolder, onUsage) {
       return;
     }
     try {
-      const { raw, usage } = await ask(client, op, text);
+      // 正規表現の便（重ねる前のもの）も渡す。本文が同じなら正規表現の結果も同じなので、使い回しはハッシュのままでよい
+      const regex = Array.isArray(holder.sailings) ? holder.sailings : [];
+      const { raw, usage } = await ask(client, op, text, regex);
       onUsage?.(id, usage);
-      llm = { hash, ok: true, model: LLM.model, ...validate(op, raw, text, posted) };
+      llm = { hash, ok: true, model: LLM.model, ...validate(op, raw, text, posted, regex) };
     } catch (e) {
       // API のエラーは「400 invalid_request_error: Your credit balance is too low …」の形にする（/health に出る）
       const api = e?.error?.error;

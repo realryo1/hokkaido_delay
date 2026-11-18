@@ -29,11 +29,14 @@ function classify(text) {
   const t = text.replace(/\s/g, "");
   if (/欠航/.test(t)) return { status: "suspended", label: "欠航" };
   if (/運休/.test(t)) return { status: "suspended", label: "運休" };
-  const delayed = /遅延|遅れ/.test(t);
+  // 「遅延の可能性」だけなら遅れの可能性（Haiku が食い違いとして見つけた。2024-11-26 のお知らせ）
+  const delayed = /遅延|遅れ/.test(t.replace(/遅[延れ]の可能性/g, ""));
+  const maybe = !delayed && /遅[延れ]の可能性/.test(t);
   const head = /出港済/.test(t) ? "出港済" : /運航予定|定刻|通常運航/.test(t) ? "運航予定" : null;
-  if (!head && !delayed && /確認中/.test(t)) return { status: "delay", label: "状況確認中" };
-  if (!head && !delayed) return { status: "delay", label: "お知らせを確認" };
-  return { status: delayed ? "delay" : "normal", label: [head, delayed ? "遅れ見込み" : null].filter(Boolean).join("・") };
+  if (!head && !delayed && !maybe && /確認中/.test(t)) return { status: "delay", label: "状況確認中" };
+  if (!head && !delayed && !maybe) return { status: "delay", label: "お知らせを確認" };
+  const tail = delayed ? "遅れ見込み" : maybe ? "遅れの可能性" : null;
+  return { status: delayed || maybe ? "delay" : "normal", label: [head, tail].filter(Boolean).join("・") };
 }
 
 // お知らせのページから便ごとの状況を読む。year はお知らせの日付の年（12月のお知らせに1月の便が載るときは翌年にする）
