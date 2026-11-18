@@ -3,7 +3,7 @@
 // - fetch：KV の JSON を CORS ヘッダー付きで返す（閲覧が増えても事業者へのアクセスは Cron の回数のまま）
 // - /health：外部の監視サービス向け。異常があれば 503 を返す（KV を読むだけで、事業者へは取りに行かない）
 import { collect, jstIso } from "./collect.js";
-import { addSnfNotes } from "./snfNotes.js";
+import { addSnfNotes, MAX_FAILS as LLM_MAX_FAILS } from "./snfNotes.js";
 
 const KEY = "status";
 // wrangler.toml の crons と合わせる（次回の予定時刻 next_update_at の計算に使う）
@@ -89,6 +89,14 @@ function health(data) {
     (failCount[e.id] >= HEALTH_FAIL_COUNT ? problems : notes).push(text);
   }
   for (const w of data.meta?.source_warnings || []) problems.push(`${w.id}: ${w.message}`);
+  // 新日本海フェリーの LLM（Haiku 5.5）：キーがない・同じお知らせで3回続けて失敗（前払いの残高切れを含む）なら異常、1〜2回なら notes
+  // 失敗してもページは正規表現で読んだ便だけを出すので、ほかの事業者の取得失敗とは分けて数える
+  for (const n of data.services?.snf?.notices || []) {
+    const l = n.llm;
+    if (!l || l.ok) continue;
+    const text = `snf: LLM: ${l.error}${l.nokey ? "" : `（${l.fails}回連続）`}`;
+    (l.nokey || l.fails >= LLM_MAX_FAILS ? problems : notes).push(text);
+  }
   return { ok: problems.length === 0, updated_at: data.updated_at, problems, notes };
 }
 

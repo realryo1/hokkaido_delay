@@ -5,14 +5,15 @@
 // - LLM は補足（出港定刻・到着遅れ見込み・一部区間だけ運航・バイク乗船不可・行先変更の可能性・船名）と、
 //   正規表現で読まない便（臨時便・代替便・振替先・船舶変更・出発港変更・箇条書きでない便）、便を特定しない案内、要約を返す
 // - LLM が足した便は、日付・港・時刻が本文にあるときだけ使い、source: "llm" を付ける（ページで印を付ける）
-// - 本文のハッシュが前回と同じなら呼ばずに前回の結果を使う。失敗は同じ本文で MAX_FAILS 回まで
-//   （前払いの残高が切れたときも失敗になり、ページは正規表現で読んだ便だけの表示に戻る）
+// - 本文のハッシュが前回と同じなら呼ばずに前回の結果を使う。失敗は同じ本文で MAX_FAILS 回まで続けて試し、そのあとは1時間に1回
+//   （前払いの残高が切れたときも失敗になり、ページは正規表現で読んだ便だけの表示に戻る。/health にも出る）
 // API キーは Worker のシークレット ANT_API_TOKEN（手元では worker/.env）
 import Anthropic from "@anthropic-ai/sdk";
 import { noticeTexts } from "./sources/snf.js";
 
 export const LLM = { model: "claude-haiku-5-5", effort: "low" };
-const MAX_FAILS = 3;
+export const MAX_FAILS = 3; // index.js の /health でも使う（この回数に達したら異常）
+const RETRY_MS = 60 * 60 * 1000;
 const PORTS = ["小樽", "苫小牧東", "舞鶴", "敦賀", "新潟", "秋田"];
 const KINDS = ["欠航", "遅れ", "臨時便", "代替便", "振替", "通常運航", "船舶変更", "出発港変更", "その他"];
 const NOTES = ["バイク乗船不可", "行先変更の可能性", "寄港しない港あり", "到着遅れの可能性"];
@@ -170,14 +171,23 @@ export async function addSnfNotes(env, svc, prevSvc, onUsage) {
     const hash = await sha256(text);
     const old = (prevSvc?.notices || []).find((p) => p.url === n.url && p.llm?.hash === hash)?.llm;
     let llm = old;
-    if (!old || (!old.ok && old.fails < MAX_FAILS)) {
-      if (!client) continue;
+    // キーがなくて呼べなかったとき（nokey）は、キーを置いたら次の回に呼ぶ。
+    // MAX_FAILS 回続けて失敗したら、残高を足したときなどに戻るよう、1時間に1回だけ呼び直す
+    const retry = old && !old.ok && (old.nokey || old.fails < MAX_FAILS || Date.now() - Date.parse(old.failed_at) >= RETRY_MS);
+    if (!old || retry) {
+      if (!client) {
+        n.llm = { hash, ok: false, nokey: true, model: LLM.model, error: "API キー（ANT_API_TOKEN）がない" };
+        continue;
+      }
       try {
         const { raw, usage } = await ask(client, text);
         onUsage?.(usage);
         llm = { hash, ok: true, model: LLM.model, ...validate(raw, text, n.date) };
       } catch (e) {
-        llm = { hash, ok: false, fails: (old?.fails || 0) + 1, model: LLM.model, error: String(e?.message || e).slice(0, 200) };
+        // API のエラーは「400 invalid_request_error: Your credit balance is too low …」の形にする（/health に出る）
+        const api = e?.error?.error;
+        const error = api?.message ? `${e.status} ${api.type}: ${api.message}` : String(e?.message || e);
+        llm = { hash, ok: false, fails: (old?.nokey ? 0 : old?.fails || 0) + 1, failed_at: new Date().toISOString(), model: LLM.model, error: error.slice(0, 200) };
       }
     }
     n.llm = llm;
