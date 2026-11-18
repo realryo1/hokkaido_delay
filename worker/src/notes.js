@@ -101,6 +101,7 @@ function schema(op) {
   return {
     type: "object",
     properties: {
+      reason: { type: "string" },
       summary: {
         type: "array",
         items: {
@@ -120,7 +121,7 @@ function schema(op) {
       },
       general: { type: "array", items: { type: "string" } },
     },
-    required: ["summary", "known", "sailings", "general"],
+    required: ["reason", "summary", "known", "sailings", "general"],
     additionalProperties: false,
   };
 }
@@ -143,7 +144,8 @@ ${op.rules}
 - arrive_at：到着（入港）の予定や実際の時刻が書かれていれば（例「4月21日(火)03:15入港予定」「22:00頃着予定」）、その日付と時刻（日付が書かれていなければ、時刻から考えて出港の日か翌日）。到着済・入港済なら done を true。なければ省く
 - ship：船名が書かれていれば（例 "けやき"）。なければ省く
 - notes：本文にあれば ${op.notes.map((n) => `「${n}」`).join("")}（arrive を付けた便には「到着遅れの可能性」は付けない）。なければ省く
-- summary：運航への影響の要点を、日付ごとの項目で。便の欠航・運航・遅れがある日には、すべて1日に1項目を作る（label は「11月18日」）。何日にもまたがること（例「船舶を入れ替えて運航する」）は、それとは別に、その日付をまとめた1項目（label は「11月19日・20日」）にする（まとめた項目があっても、その日の便のことはその日の項目に書く）。便の欠航・運航を書くときは、一覧の状態と本文の両方で確かめたことだけを、どの港発のどの便か（深夜便・時刻など）で書く。「6便欠航」「計4便」のような便の数は書かない（数え間違えるため）。month・day は label の最初の日。text は要点を60字以内で、label の日付は text に繰り返さない。理由（低気圧・津波など）は最初の項目の text に入れる。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先は入れない
+- reason：欠航・遅れなどの理由を30字以内で（例「発達する低気圧による海上荒天」「津波注意報」「さんふらわあ さっぽろの機関故障」）。本文に理由が書かれていなければ空文字
+- summary：運航への影響の要点を、日付ごとの項目で。便の欠航・運航・遅れがある日には、すべて1日に1項目を作る（label は「11月18日」）。何日にもまたがること（例「船舶を入れ替えて運航する」）は、それとは別に、その日付をまとめた1項目（label は「11月19日・20日」）にする（まとめた項目があっても、その日の便のことはその日の項目に書く）。便の欠航・運航を書くときは、一覧の状態と本文の両方で確かめたことだけを、どの港発のどの便か（深夜便・時刻など）で書く。「6便欠航」「計4便」のような便の数は書かない（数え間違えるため）。month・day は label の最初の日。text は要点を60字以内で、label の日付は text に繰り返さない。理由は text に書かない（reason に書く）。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先は入れない
 - general：日付に結び付かない運航の案内（例「その他の便も遅れる場合がある」や、期間を決めた出港時刻の変更）を、1つ60字以内で。summary に書いたことは繰り返さない。どの便が欠航・運航するかは sailings に書き、general には書かない。本文にない日付を補わない。お詫び・手続きの方法・問い合わせ先・「○時現在の情報」は入れない`;
 // 指示（プロンプト・形）の版。本文のハッシュに混ぜるので、上げると今出ているお知らせも1回だけ読み直す
 const PROMPT_VERSION = 2;
@@ -224,7 +226,8 @@ export function validate(op, raw, text, posted, regex = []) {
     .map((x) => ({ date: iso(+x.month, +x.day), label: clip(x.label, 20) || `${+x.month}月${+x.day}日`, text: clip(x.text, 80) }))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 8);
-  return { summary, known, sailings, general };
+  const reason = clip(raw?.reason, 40);
+  return { ...(reason ? { reason } : {}), summary, known, sailings, general };
 }
 
 // 正規表現の便に LLM の補足を重ね、正規表現にない便を source: "llm" で足す（状態は正規表現の便のまま）

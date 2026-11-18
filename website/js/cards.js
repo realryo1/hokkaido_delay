@@ -258,12 +258,13 @@ function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, s
   if (!list.length && !unread && !llms.length) return "";
   // 便は出港の日時の順に並べる（お知らせは出発港ごとに書かれているので、そのままだと時間が行ったり来たりする）。同じ日時は出発港の順
   list = [...list].sort((a, b) => `${a.date} ${a.time} ${a.from}`.localeCompare(`${b.date} ${b.time} ${b.from}`));
-  // 要約は日付ごとの行（「11月18日：…」）、日付に結び付かない案内は最後に「その他：」で出す（要約が文字列だった版の結果もそのまま出す）
+  // 要約は先頭に「理由：」、日付ごとの行（「11月18日：…」）、日付に結び付かない案内は最後に「その他：」で出す（要約が文字列だった版の結果もそのまま出す）
   const about = llms
     .map((l) => {
+      const reason = l.reason ? [`理由：${esc(l.reason)}`] : [];
       const days = Array.isArray(l.summary) ? l.summary.map((x) => `${esc(x.label)}：${esc(x.text)}`) : [esc(l.summary)];
       const other = (l.general || []).map((g, i) => `${i ? "" : "その他："}${esc(g)}`);
-      return `<li class="dl-llm">${AUTO}<span>${[...days, ...other].join("<br>")}</span></li>`;
+      return `<li class="dl-llm">${AUTO}<span>${[...reason, ...days, ...other].join("<br>")}</span></li>`;
     })
     .join("");
   return `<details class="dl-sailings"${ui.sailingsOpen ? " open" : ""}>
