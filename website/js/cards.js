@@ -256,6 +256,8 @@ function sailingNote(s, shipInLine) {
 // 見出しは「title（count便・at）」
 function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, shipInLine }) {
   if (!list.length && !unread && !llms.length) return "";
+  // 便は出港の日時の順に並べる（お知らせは出発港ごとに書かれているので、そのままだと時間が行ったり来たりする）。同じ日時は出発港の順
+  list = [...list].sort((a, b) => `${a.date} ${a.time} ${a.from}`.localeCompare(`${b.date} ${b.time} ${b.from}`));
   const about = llms
     .map((l) => `<li class="dl-llm">${AUTO}<span>${esc(l.summary)}${l.general?.length ? `<br>${l.general.map(esc).join("<br>")}` : ""}</span></li>`)
     .join("");
