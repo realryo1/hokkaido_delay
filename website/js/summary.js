@@ -1,5 +1,5 @@
 // 行き先ごとのまとめ（#summary の中身）。各カードのデータから、行き先ごとに「使える手段があるか」をまとめ、縦の路線図に描く
-import { esc, badge, mark } from "./util.js";
+import { esc, mark } from "./util.js";
 import { ROUTEMAP } from "./routemap.js";
 import { judgeFerry } from "./ferry.js";
 
@@ -110,7 +110,7 @@ function judge(dest, services) {
 const track = (c) =>
   `<li><a class="dl-track dl-track--${esc(c.line)} is-${esc(c.st)}" href="#dl-${esc(c.id)}" aria-label="${esc(`${c.name}：${c.text}`)}">
       <span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(c.st)}</span>
-      <span class="dl-track__label" aria-hidden="true">${esc(c.name)}${badge(c.st, c.text)}</span>
+      <span class="dl-track__label" aria-hidden="true">${esc(c.name)}</span>
     </a></li>`;
 
 // 路線図は1つの grid に描く。列は「左の余白・線の列（col）・右の駅名と判定」、行は「駅・駅のあいだ」を交互に並べる
@@ -147,7 +147,7 @@ function renderMap(groups) {
   // 縦書きの名前を置く区間を選ぶ。名前の長さで区間の高さが決まるので、すでに長い区間に入れて全体を短くする
   // （名前のない区間は、通過する線だけの短い区間になる）。置き場所が1つしかない線から決め、同じ高さなら始まりに近い区間
   // 灰色の線の名前は縦書きにせず、右の列に横書きで添える
-  const size = (l) => [...l.name].length + (l.text ? [...l.text].length + 1 : 0);
+  const size = (l) => [...l.name].length;
   const height = new Map();
   const labelAt = new Map();
   const order = [...spans.keys()].filter((l) => l.st !== "plain").sort((p, q) => spans.get(p).length - spans.get(q).length || size(q) - size(p));
@@ -178,7 +178,7 @@ function renderMap(groups) {
     for (const s of segs) if (s !== k) piece(l, l.up ? 1 : segRow(s), "dl-track--more");
     if (k === undefined) continue;
     // 名前と印を置く区間
-    const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(l.st)}</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}${l.text ? badge(l.st, l.text) : ""}</span>`;
+    const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(l.st)}</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}</span>`;
     const attrs = `class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)}${l.up ? " dl-track--up" : ""}" ${cell(
       l.up ? 1 : segRow(k),
       l.col + 1

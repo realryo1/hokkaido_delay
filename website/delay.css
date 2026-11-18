@@ -334,6 +334,7 @@ button { font: inherit; color: inherit; }
 .dl-map {
   --pitch: 34px;
   --band: 24px;
+  --mark: 32px;
   display: grid;
   grid-template-columns: 6px repeat(var(--n), minmax(var(--pitch), 1fr));
   align-items: center;
@@ -423,7 +424,6 @@ button { font: inherit; color: inherit; }
   line-height: 1.15;
   letter-spacing: 0;
 }
-.dl-track__label .dl-badge { padding: 6px 1px; font-size: .65rem; letter-spacing: 0; }
 .dl-track:hover .dl-track__label { text-decoration: underline; }
 /* 状態：平常は実線、乱れは破線、運休は赤の破線、時間外・取得できずは灰の点線 */
 .is-delay .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), var(--line) 0 10px, transparent 10px 16px); }
@@ -450,15 +450,19 @@ button { font: inherit; color: inherit; }
 .dl-map > .dl-track > * { grid-area: 1 / 1; }
 .dl-map > .dl-track .dl-track__line { width: var(--band); margin-left: 0; }
 .dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: calc((var(--band) - 4px) / 2); }
+/* 印は帯より少し大きく（--mark）、帯の左右にはみ出させる。状態の言葉（バッジ）は路線図には出さない（印で見せる） */
 .dl-map > .dl-track .dl-track__mark {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   top: auto;
   left: auto;
   translate: none;
   align-self: start;
-  z-index: 2;
-  margin: 4px 0 0 calc((var(--band) - 18px) / 2);
+  width: var(--mark);
+  height: var(--mark);
+  padding: 3px;
+  font-size: 1rem;
+  margin: 4px 0 0 calc((var(--band) - var(--mark)) / 2);
 }
 /* 上へ出す線は mask-image で薄くしていて、それだけで文字より上に描かれてしまうので、名前の帯を線より上に置く */
 .dl-map > .dl-track .dl-track__label {
@@ -467,13 +471,13 @@ button { font: inherit; color: inherit; }
   align-self: start;
   justify-content: flex-start;
   width: var(--band);
-  padding: 28px 0 8px;
+  padding: calc(var(--mark) + 8px) 0 8px;
   border-radius: 4px;
   background: var(--line);
   color: #fff;
 }
-.dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - 18px) / 2); }
-.dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 32px; }
+.dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - var(--mark)) / 2); }
+.dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 calc(var(--mark) + 14px); }
 .dl-track--nanboku { --line: var(--line-nanboku); }
 .dl-track--tozai { --line: var(--line-tozai); }
 .dl-track--toho { --line: var(--line-toho); }
@@ -486,7 +490,6 @@ button { font: inherit; color: inherit; }
 .dl-map__stubs .dl-track__line { width: 28px; height: 6px; margin: 0 12px 0 0; }
 .dl-map__stubs .dl-track__mark { top: 50%; left: 28px; translate: -50% -50%; }
 .dl-map__stubs .dl-track__label { writing-mode: horizontal-tb; padding: 0 0 0 6px; font-size: .78rem; }
-.dl-map__stubs .dl-track__label .dl-badge { padding: 1px 8px; }
 
 .dl-map__legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: .72rem; }
 .dl-map__legend > span { display: inline-flex; align-items: center; gap: 3px; }
