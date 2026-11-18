@@ -323,21 +323,18 @@ button { font: inherit; color: inherit; }
 }
 
 /* ---------- 行き先ごとのまとめ（縦の路線図） ----------
-   1つの grid に描く（delay.js の renderMap）。列は「左の余白・線の列（--n 本）・駅名と判定」、行は駅と駅のあいだを交互に並べる。
+   1つの grid に描く（summary.js の renderMap）。列は「左の余白・線の列（--n 本）」（右の判定などの列は2026-11-19にやめた）、行は駅と駅のあいだを交互に並べる。
    駅（.dl-map__stop）は停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。線（.dl-track）は行ごとに置き、名前は縦書きで線の右に。状態は線の描き方と印（○△×）で示す */
 .dl-map {
   --pitch: 28px;
   display: grid;
-  grid-template-columns: 6px repeat(var(--n), var(--pitch)) minmax(0, 1fr);
+  grid-template-columns: 6px repeat(var(--n), var(--pitch));
   align-items: center;
   margin: 4px 0 18px;
 }
 /* マスの置き場所は summary.js が style の --row・--col（駅のカプセルは --col-end まで）で渡す */
-.dl-map > .dl-track,
-.dl-map > .dl-map__side { grid-area: var(--row) / var(--col); }
+.dl-map > .dl-track { grid-area: var(--row) / var(--col); }
 .dl-map > .dl-map__stop { grid-area: var(--row) / var(--col) / auto / var(--col-end); }
-.dl-map__side { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; padding: 4px 0 4px 12px; }
-.dl-map__side .dl-badge { white-space: normal; }
 /* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
    線の左右に同じだけ（8px）余白を取る（列の中で線は左寄り（4〜10px）、右は縦書きの名前の場所なので、右は詰める）。
    駅名が入りきらないときは右へ広げる */
@@ -366,8 +363,6 @@ button { font: inherit; color: inherit; }
 /* 横に枝を出す駅（札幌の地下鉄）は、参考にした路線図の乗換駅のように縦に長くして、枝もカプセルの中に入れる */
 .dl-map__stop--tall { flex-direction: column; align-items: flex-start; padding: 6px 14px 8px; border-radius: 16px; }
 .dl-map__station { font-size: .95rem; font-weight: 700; line-height: 1.2; white-space: nowrap; }
-.dl-map__name { font-weight: 700; }
-.dl-map__sub { flex-basis: 100%; font-size: .7rem; opacity: .75; }
 /* 駅の行の線：始まりは下半分、終わりは上半分、通過は駅の上に重ねる */
 .dl-map > .dl-track { align-self: stretch; }
 .dl-map > .dl-track--top { align-self: start; height: 50%; }
@@ -447,8 +442,6 @@ button { font: inherit; color: inherit; }
 /* 運行情報のない線（苫小牧駅〜苫小牧港のバス・タクシー）：細い灰色の線で、名前だけ */
 .is-plain .dl-track__line { width: 4px; margin-left: 5px; background: #bbb; }
 /* 灰色の線の名前は、区間の右に横書きで添える（縦書きにすると区間が長くなるため） */
-.dl-map__plain { flex-basis: 100%; font-size: .7rem; opacity: .75; }
-.dl-map__plain::before { content: ""; display: inline-block; width: 4px; height: 1em; margin-right: 6px; background: #bbb; vertical-align: -.15em; }
 .dl-track--nanboku { --line: var(--line-nanboku); }
 .dl-track--tozai { --line: var(--line-tozai); }
 .dl-track--toho { --line: var(--line-toho); }

@@ -120,13 +120,10 @@ function renderMap(groups) {
   const extras = map.extras.map((x) => ({ via: [], ...x, line: "plain", st: "plain" }));
   const lines = [...Object.values(groups).flatMap((g) => g.chips.map(placed).filter(Boolean)), ...extras];
   const n = Math.max(1, ...lines.map((l) => l.col), ...map.stations.map((s) => s.right || 0));
-  const side = n + 2;
   const stRow = (i) => 2 * i + 2;
   const segRow = (i) => 2 * i + 3;
   const cells = [];
-  // 右の列（駅のあいだの判定・灰色の線の名前など）は、行ごとにまとめてから描く
-  const sides = new Map();
-  const addSide = (row, html) => sides.set(row, [...(sides.get(row) || []), html]);
+  // 右の列（駅のあいだの判定・灰色の線の名前・駅の補足・topNote）は2026-11-19にやめた（ユーザーの希望）。路線図は線と駅だけ
   const piece = (l, row, mod) =>
     cells.push(
       `<span class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)} ${mod}" ${cell(row, l.col + 1)} data-line="${esc(
@@ -174,10 +171,7 @@ function renderMap(groups) {
     for (let j = a + 1; j < b; j++) piece(l, stRow(j), l.via.includes(map.stations[j].name) ? "dl-track--stop" : "dl-track--pass");
     const k = labelAt.get(l);
     for (const s of segs) if (s !== k) piece(l, l.up ? 1 : segRow(s), "dl-track--more");
-    if (k === undefined) {
-      addSide(segRow(a), `<span class="dl-map__plain">${esc(l.name)}</span>`);
-      continue;
-    }
+    if (k === undefined) continue;
     // 名前と印を置く区間
     const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${
       MARK[l.st] || MARK.unknown
@@ -208,16 +202,7 @@ function renderMap(groups) {
           <span class="dl-map__station">${esc(st.name)}</span>${branch}
         </div>`;
     cells.push(box("", ' aria-hidden="true"'), box(" dl-map__stop--label"));
-    if (st.sub) addSide(row, `<span class="dl-map__sub">${esc(st.sub)}</span>`);
   });
-  for (const [id, above] of Object.entries(map.captions)) {
-    const g = groups[id];
-    const k = at(above);
-    if (!g || k < 0) continue;
-    addSide(segRow(k), `<span class="dl-map__name">${esc(g.name)}</span>${badge(g.verdict[0], g.verdict[1])}`);
-  }
-  if (lines.some((l) => l.up)) addSide(1, `<span class="dl-map__sub">${esc(map.topNote)}</span>`);
-  for (const [row, html] of sides) cells.push(`<div class="dl-map__side" ${cell(row, side)}>${html.join("")}</div>`);
   return `<div class="dl-map" style="--n: ${n}">${cells.join("")}</div>`;
 }
 
