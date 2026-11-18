@@ -231,8 +231,6 @@ button { font: inherit; color: inherit; }
   /* 左右の列：1本指の動きは js/touchpan.js が受けて、列ごとに独立してスクロールさせる */
   .dl-board,
   .dl-right { touch-action: none; }
-  /* 便の表の横スクロールは標準のまま（縦の動きは js/touchpan.js が列ごと動かす） */
-  .dl-flights { touch-action: pan-x; }
   .dl-board {
     grid-row: 1 / span 2;
     position: sticky;
@@ -265,7 +263,6 @@ button { font: inherit; color: inherit; }
     border-bottom: 6px solid var(--col-secondary-lighter);
   }
   .dl-board .dl-card:last-child { border-bottom: 0; }
-  .dl-flights { overflow-x: auto; }
   /* 持ち手：画面の高さいっぱいの縦の帯（パネルと同じく画面に固定）。中央に縦長のつまみを描く */
   .dl-split {
     grid-row: 1 / span 2;
@@ -812,10 +809,11 @@ li.dl-airrow {
 }
 /* 便の一覧の社名の列：帯を広げて中に社名を入れる */
 tr.dl-airrow > td.dl-airname {
-  padding: 8px 10px;
+  padding: 6px 2px;
   /* 右端の約3分の1を斜めの境目で2色目にする（1色の会社は --line2 がないので全体が1色） */
   background: linear-gradient(110deg, var(--line) 67%, var(--line2, var(--line)) 67%);
   color: var(--line-ink, #fff);
+  font-size: clamp(.6rem, 2.5cqi, .8rem);
   font-weight: 700;
   text-align: center;
 }
@@ -824,7 +822,7 @@ tr.dl-airrow > td.dl-airname {
 tr.dl-air--SKY > td.dl-airname {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffcc00' d='M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.5l7.1-.6z'/%3E%3C/svg%3E")
-      right .3em center / 2.4em no-repeat,
+      right .15em center / 1.8em no-repeat,
     var(--line);
 }
 /* AIRDO だけは斜めにせず上下で分ける（文字が紺なので、水色・黄のどちらにかかっても読める） */
@@ -837,27 +835,41 @@ tr.dl-air--FDA > td.dl-airname {
 }
 
 /* 遅れ・欠航の便の一覧（便数が多いので折りたたむ） */
-.dl-flights { margin-top: 10px; }
+.dl-flights { margin-top: 10px; container-type: inline-size; }
 .dl-flights summary { cursor: pointer; font-size: .85rem; font-weight: 700; }
 .dl-check { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: .78rem; cursor: pointer; }
 .dl-check input { margin: 0; accent-color: var(--col-secondary-dark); }
 .dl-flights .dl-table { margin-top: 6px; }
 .dl-flights__title { margin: 14px 0 0; font-size: .85rem; }
-/* 出発・到着の2つの表で列幅がそろうよう、幅を固定する（行先・出発地の列が残りの幅を使う）。
-   社名の列はスカイマークの★も文字に重ならない幅。狭い画面では .dl-flights が横スクロールする */
-.dl-table--flights { font-size: .78rem; table-layout: fixed; min-width: 40em; }
-.dl-table--flights td { width: auto; }
+/* 出発・到着の2つの表で列幅がそろうよう割合で配分し、カードの左右端まで広げて余白をなくす。
+   定刻・変更・状況は省略（...）せず必ず表示する */
+.dl-table--flights {
+  width: calc(100% + 32px);
+  margin-inline: -16px;
+  font-size: clamp(.68rem, 2.8cqi, .82rem);
+  font-variant-numeric: tabular-nums;
+  table-layout: fixed;
+}
 .dl-table--flights th,
-.dl-table--flights td { overflow: hidden; text-overflow: ellipsis; }
-.dl-col-air { width: 11em; }
-.dl-col-no { width: 6.5em; }
-.dl-col-time { width: 4.5em; }
-.dl-col-est { width: 8em; }
-.dl-col-state { width: 7.5em; }
-.dl-table--flights small { font-size: .7rem; opacity: .8; }
+.dl-table--flights td { padding: 6px 4px; }
+.dl-table--flights thead th:first-child { padding-left: 8px; }
+.dl-table--flights th:last-child,
+.dl-table--flights td:last-child { padding-right: 8px; }
+.dl-table--flights th:nth-child(2),
+.dl-table--flights td:nth-child(2) { padding-left: 10px; padding-right: 6px; }
+.dl-table--flights td { width: auto; }
+.dl-col-air { width: 22%; }
+.dl-col-no { width: 18%; }
+.dl-col-place { width: 16%; }
+.dl-col-time { width: 11%; }
+.dl-col-est { width: 18%; }
+.dl-col-state { width: 15%; }
+.dl-table--flights td:nth-child(n+4) { white-space: nowrap; }
+.dl-table--flights small { margin-left: 2px; font-size: .85em; opacity: .8; }
+.dl-table--flights .dl-badge { padding: 1px 6px; font-size: .88em; }
 .dl-table--flights tr.is-done td { opacity: .7; }
 @media (max-width: 640px) {
-  .dl-flights { overflow-x: auto; }
+  .dl-table--flights { width: calc(100% + 24px); margin-inline: -12px; }
 }
 
 /* 取得に失敗している事業者：見出し（フェリーは社名）の横に小さく「情報途絶（最終取得 07:57）」 */

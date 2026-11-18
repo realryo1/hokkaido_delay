@@ -87,7 +87,7 @@ const AIRLINE_SHORT = {
 };
 // 丘珠空港の一覧の社名（便名の先頭3文字は worker/src/sources/okadama.js が付けたコード。HAC の便も JAL の便名で載る）
 const AIRLINE_SHORT_OKADAMA = { JAL: "JAL・HAC", TOK: "トキエア", FDA: "FDA" };
-const kindLabel = (f) => (f.kind === "done" ? (f.dir === "arrival" ? "遅れ（到着済）" : "遅れ（出発済）") : KIND[f.kind]);
+const kindLabel = (f) => (f.kind === "done" ? (f.dir === "arrival" ? "到着済" : "出発済") : KIND[f.kind]);
 
 // 新千歳空港と丘珠空港は同じ形のデータ（groups・flights）なので同じ描き方にする。short は社名の列に出す短い表記
 function renderAirport(id, svc, short = AIRLINE_SHORT) {
@@ -120,7 +120,7 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
     if (!rows.length) return "";
     return `<h3 class="dl-flights__title">${title}（${rows.length}便）</h3>
           <table class="dl-table dl-table--flights">
-            <colgroup><col class="dl-col-air"><col class="dl-col-no"><col><col class="dl-col-time"><col class="dl-col-est"><col class="dl-col-state"></colgroup>
+            <colgroup><col class="dl-col-air"><col class="dl-col-no"><col class="dl-col-place"><col class="dl-col-time"><col class="dl-col-est"><col class="dl-col-state"></colgroup>
             <thead><tr><th>航空会社</th><th>便名</th><th>${placeLabel}</th><th>定刻</th><th>変更</th><th>状況</th></tr></thead>
             <tbody>${rows
               .map(
@@ -129,7 +129,7 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
                   <td>${esc(f.flight)}</td>
                   <td>${esc(f.place)}</td>
                   <td>${esc(f.scheduled)}</td>
-                  <td>${esc(f.estimated || "")}${f.delay_min > 0 ? `<small>（+${f.delay_min}分）</small>` : ""}</td>
+                  <td>${esc(f.estimated || "")}${f.delay_min > 0 ? `<small>+${f.delay_min}分</small>` : ""}</td>
                   <td>${badge(KIND_STATUS[f.kind] || "unknown", kindLabel(f))}</td>
                 </tr>`
               )
