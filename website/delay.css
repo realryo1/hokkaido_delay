@@ -472,10 +472,11 @@ button { font: inherit; color: inherit; }
   justify-content: flex-start;
   width: var(--band);
   padding: calc(var(--mark) + 8px) 0 8px;
-  border-radius: 4px;
   background: var(--line);
   color: #fff;
 }
+/* 縦書きでは下線が字の右に縦線として出て紛らわしいので、路線図の線にはマウスを載せても下線を引かない */
+.dl-map > .dl-track:hover .dl-track__label { text-decoration: none; }
 .dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - var(--mark)) / 2); }
 .dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 calc(var(--mark) + 14px); }
 .dl-track--nanboku { --line: var(--line-nanboku); }
