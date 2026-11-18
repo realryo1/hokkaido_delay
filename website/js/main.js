@@ -35,7 +35,7 @@ const setBanners = (html) => {
   $banners.innerHTML = html;
 };
 
-// 「もし飛行機が止まったら？」（plan.js）。取得するたびに運行情報を渡す
+// 「飛行機が止まったら？」（plan.js）。取得するたびに運行情報を渡す
 const updatePlan = initPlan();
 
 let lastServices = {}; // 配線エディタで描き直すときに使う

@@ -30,6 +30,10 @@
   --font-base: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
   --font-display: "Dela Gothic One", var(--font-base);
 }
+/* 全画面PWA（Android）では下のジェスチャーバーが重なるのに env(safe-area-inset-bottom) が 0 になるため、カレンダーと同じ最低16pxを確保する */
+@media (display-mode: fullscreen) {
+  :root { --safe-b: max(env(safe-area-inset-bottom, 0px), 16px); }
+}
 
 *,
 *::before,
@@ -111,7 +115,7 @@ button { font: inherit; color: inherit; }
   --brand-sunflower: #005396;   /* さんふらわあ */
   --brand-snf: #1a436d;         /* 新日本海フェリー */
   --brand-taiheiyo: #00859b;    /* 太平洋フェリー（仮。色は未定） */
-  /* 「もし飛行機が止まったら？」の便の行の色。シルバーフェリーは船ごと、新日本海フェリーは行き先ごと（舞鶴は公式サイトのアクセントの赤） */
+  /* 「飛行機が止まったら？」の便の行の色。シルバーフェリーは船ごと、新日本海フェリーは行き先ごと（舞鶴は公式サイトのアクセントの赤） */
   --ship-princess: #ff66cc;  /* シルバープリンセス ピンク */
   --ship-tiara: #800080;     /* シルバーティアラ 紫 */
   --ship-breeze: #8cbb4f;    /* シルバーブリーズ 黄緑 */
@@ -187,7 +191,7 @@ button { font: inherit; color: inherit; }
 .dl-head__reload:disabled { opacity: .5; cursor: wait; }
 
 /* ---------- 2カラム ----------
-   641px 以上：左に運行状況のパネル、持ち手、右に「もし飛行機が止まったら？」とフッター（.dl-right）。左右の列はどちらも画面の高さの枠で、中だけスクロールする（ページ全体はスクロールしない）。
+   641px 以上：左に運行状況のパネル、持ち手、右に「飛行機が止まったら？」とフッター（.dl-right）。左右の列はどちらも画面の高さの枠で、中だけスクロールする（ページ全体はスクロールしない）。
    タッチでは左右の列を別々の指で同時に動かせるよう、列は touch-action: none にして、指の動きは js/touchpan.js が受ける（ブラウザ標準のスクロールは同時に1か所しか動かない）。
    パネルの幅（--board-w）は持ち手で変えられる（js/layout.js が .dl に入れる）。
    640px 以下：画面下端に独立したガラスの切り替えバー（.dl-tabbar / .dl-tabs）を置き、1列ずつ出す。どちらの列を出すかは js/layout.js が .is-active で切り替える */
@@ -611,7 +615,7 @@ span.dl-mark--unknown { display: grid; place-items: center; color: var(--mark-of
 /* まとめからカードへ移ったとき、見出しが画面の上端に隠れないようにする */
 .dl-card[id] { scroll-margin-top: 12px; }
 
-/* ---------- もし飛行機が止まったら？ ---------- */
+/* ---------- 飛行機が止まったら？ ---------- */
 .dl-plan__lead { margin: 0 0 8px; font-size: .8rem; }
 .dl-plan__form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .85rem; }
 .dl-plan__form input { padding: 4px 8px; border: 1px solid var(--col-secondary-light); border-radius: 8px; font: inherit; }
