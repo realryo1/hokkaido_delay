@@ -339,6 +339,8 @@ button { font: inherit; color: inherit; }
   grid-template-columns: 6px repeat(var(--n), minmax(var(--pitch), 1fr));
   align-items: center;
   margin: 4px 0 18px;
+  /* 中の重ね順（駅名・印・通過する線の z-index）を路線図の中で閉じる。閉じないと、スクロールしたとき上に貼り付く見出しより上に出る */
+  isolation: isolate;
 }
 /* マスの置き場所は summary.js が style の --row・--col（駅のカプセルは --col-end まで）で渡す */
 .dl-map > .dl-track { grid-area: var(--row) / var(--col); }
