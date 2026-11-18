@@ -186,7 +186,8 @@ export function validate(op, raw, text, posted, regex = []) {
     if (dep && dep.at !== `${base.date}T${base.time}`) item.depart_at = dep;
     if (s.arrive === "遅れ見込み") item.arrive = s.arrive;
     const arr = at(s.arrive_at);
-    if (arr) item.arrive_at = arr;
+    // 出港の時刻をそのまま到着の時刻として返してくることがあるので捨てる
+    if (arr && arr.at !== `${base.date}T${base.time}`) item.arrive_at = arr;
     const runs = (Array.isArray(s.runs_to) ? s.runs_to : []).map(port).filter(Boolean);
     if (op.runsTo && runs.length) item.runs_to = [...new Set(runs)];
     const ship = String(s.ship || "").trim();
@@ -240,6 +241,8 @@ export function merge(sailings, llm) {
     const hit = regex.find((s) => s.date === k.date && s.from === k.from && s.time === k.time && s.to === k.to);
     if (!hit) continue;
     const { date, from, time, to, mismatch, ...extra } = k;
+    // 欠航・運休の便は出港も到着もしないので、出港・到着の補足は重ねない（2026-11-19 の本番で欠航の便に「出港定刻・到着遅れ見込み」が付いた）
+    if (hit.status === "suspended") for (const key of ["depart", "depart_at", "arrive", "arrive_at"]) delete extra[key];
     if (extra.runs_to && [hit.to, ...(hit.via || [])].every((p) => extra.runs_to.includes(p))) delete extra.runs_to;
     if (hit.ship) delete extra.ship;
     Object.assign(hit, extra);
@@ -256,6 +259,7 @@ export function merge(sailings, llm) {
       if (extra.runs_to && [hit.to, ...(hit.via || [])].every((p) => extra.runs_to.includes(p))) delete extra.runs_to;
       // 船名は正規表現で読んだものを使う
       if (hit.ship) delete extra.ship;
+      if (hit.status === "suspended") for (const key of ["depart", "depart_at", "arrive", "arrive_at"]) delete extra[key];
       // 同じ便が「代替便」などとして別に書かれていたら重ねない。状態は変えない
       if (!SEPARATE.includes(x.kind)) Object.assign(hit, extra);
       continue;
