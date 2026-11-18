@@ -6,8 +6,11 @@
 // delay のときだけ、リンク先のお知らせを取りに行き、便ごとの状況を読む。お知らせの本文は手書きだが、2024〜2026年の保存では次の形でそろっている
 //   【3月16日（日）】 ＜八戸発＞ 08:45発便 シルバープリンセス 運航予定 … ＜苫小牧発＞ 21:15発便 シルバープリンセス 欠 航
 // 取り込むのは日付・出発港・時刻・船名だけで、状態の文言（「八戸港入港遅延見込み」など）は語から分類したラベルにする。
+// 「＜ 八 戸 発 ＞」のように空白が入ること、「22:00便発」の書き間違いがある（2025年7月の津波）。
+// 「08:45発便」で始まるのに日付・出発港の下にない行は unread に数える。行の後ろの補足（入港予定の時刻など）と要約は LLM で読む（src/notes.js）。
 // 平常時は便ごとの情報がない（定期検査の運休や代船の期間もトップは「通常運航しています」のまま）ので、便ごとには分けない。
 import { get } from "../http.js";
+import { noticeTexts, MAX_TEXT } from "../noticeTexts.js";
 
 const PAGE = "https://www.silverferry.jp/";
 const CLASSES = { normal: "normal", delay: "delay" };
@@ -27,7 +30,8 @@ function classify(text) {
   if (/欠航/.test(t)) return { status: "suspended", label: "欠航" };
   if (/運休/.test(t)) return { status: "suspended", label: "運休" };
   const delayed = /遅延|遅れ/.test(t);
-  const head = /出港済/.test(t) ? "出港済" : /運航予定|定刻/.test(t) ? "運航予定" : null;
+  const head = /出港済/.test(t) ? "出港済" : /運航予定|定刻|通常運航/.test(t) ? "運航予定" : null;
+  if (!head && !delayed && /確認中/.test(t)) return { status: "delay", label: "状況確認中" };
   if (!head && !delayed) return { status: "delay", label: "お知らせを確認" };
   return { status: delayed ? "delay" : "normal", label: [head, delayed ? "遅れ見込み" : null].filter(Boolean).join("・") };
 }
@@ -35,12 +39,14 @@ function classify(text) {
 // お知らせのページから便ごとの状況を読む。year はお知らせの日付の年（12月のお知らせに1月の便が載るときは翌年にする）
 export function parseNotice(html) {
   const start = html.indexOf("postTitle");
-  if (start < 0) return { sailings: [], time: null };
+  if (start < 0) return { sailings: [], time: null, unread: 0, posted: null, text: "" };
   const end = html.indexOf("lowerBlock", start);
   const text = html
     .slice(start, end > 0 ? end : undefined)
+    .replace(/^[^>]*>/, "")
     .replace(/<br\s*\/?>|<\/p>|<\/h2>/gi, "\n")
     .replace(/<[^>]+>/g, "")
+    .replace(/<div[^\n]*$/, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&");
   const lines = text.split("\n").map(norm).filter(Boolean);
@@ -55,6 +61,7 @@ export function parseNotice(html) {
   const time = t ? `${iso(+t[1], +t[2])}T${pad(t[3])}:${t[4]}:00+09:00` : null;
 
   const sailings = [];
+  let unread = 0;
   let date = null;
   let from = null;
   for (const line of lines) {
@@ -64,17 +71,20 @@ export function parseNotice(html) {
       from = null;
       continue;
     }
-    const p = /^＜(八戸|苫小牧)発＞/.exec(line);
+    const p = /^＜(八戸|苫小牧)発＞/.exec(line.replace(/\s/g, ""));
     if (p) {
       from = p[1];
       continue;
     }
-    const s = /^(\d{1,2}):(\d{2})\s*発便\s*(\S+)\s*(.*)$/.exec(line);
+    const s = /^(\d{1,2}):(\d{2})\s*(?:発便|便発)\s*(\S+)\s*(.*)$/.exec(line);
     if (s && date && from) {
       sailings.push({ date, from, to: PORTS[from], time: `${pad(s[1])}:${s[2]}`, ship: s[3], ...classify(s[4]) });
+    } else if (/^\d{1,2}:\d{2}\s*(?:発便|便発)/.test(line)) {
+      unread++;
     }
   }
-  return { sailings, time };
+  const postedIso = posted ? `${posted[1]}-${pad(posted[2])}-${pad(posted[3])}` : null;
+  return { sailings, time, unread, posted: postedIso, text: lines.join("\n").slice(0, MAX_TEXT) };
 }
 
 export async function fetchSilverferry() {
@@ -94,14 +104,20 @@ export async function fetchSilverferry() {
   // お知らせが取れなくても、トップの状態は出す（sailings: null は「便ごとの状況は読めていない」）
   let sailings = null;
   let source_time = null;
+  let unread = 0;
+  let posted = null;
+  noticeTexts.delete("silverferry");
   if (status !== "normal" && notice_url) {
     try {
       const n = parseNotice(await get(notice_url));
       sailings = n.sailings;
       source_time = n.time;
+      unread = n.unread;
+      posted = n.posted;
+      if (n.text) noticeTexts.set("silverferry", n.text);
     } catch {
       sailings = null;
     }
   }
-  return { source_time, status, message: message || null, notice_url, sailings, warnings };
+  return { source_time, status, message: message || null, notice_url, posted, sailings, unread, warnings };
 }

@@ -8,19 +8,16 @@
 //   欠航                                      ← 見出し（状態）
 //   ◆ 新潟 ～ 小樽                            ← 航路の小見出し（あってもなくてもよい。状態は引き継ぐ）
 //   ・1月9日（金）苫小牧東港23:30発→敦賀行     ← 1行が1便
-// の形がほとんど。正規表現で読むのは日付・出発港・時刻・行き先（経由地）だけで、状態は見出しの語から分類したラベルにする（行の後ろの補足は LLM で読む。src/snfNotes.js）。
+// の形がほとんど。正規表現で読むのは日付・出発港・時刻・行き先（経由地）だけで、状態は見出しの語から分類したラベルにする（行の後ろの補足は LLM で読む。src/notes.js）。
 // 欠航・遅れ以外の見出し（臨時便運航・代替便のご案内・運航船舶変更・出発港変更・通常運航など）の下の便と、振替先（⇒）の行は読まない。
 // 日付で始まるか行頭が「・」「●」で「発」を含むのに読めない行（「8月30日（日）小樽23:30発→舞鶴行　欠航」のような書き方）は unread に数え、
 // ページでは「お知らせで確認」と出す。
 import { get } from "../http.js";
+import { noticeTexts, MAX_TEXT } from "../noticeTexts.js";
 
 const PAGE = "https://www.snf.jp/";
 const LIST = "https://www.snf.jp/info-list/?info_group=operation";
 const MAX_NOTICES = 3; // 1回に取りに行くお知らせの数の上限
-const MAX_TEXT = 6000; // LLM に渡す本文の文字数の上限
-
-// お知らせの本文（URL → 本文）。LLM（snfNotes.js）に渡すためだけに持ち、JSON には入れない（事業者の文章はページに出さないため）
-export const noticeTexts = new Map();
 
 const pad = (n) => String(n).padStart(2, "0");
 // 全角の数字・コロン・かっこを半角／全角にそろえ、空白を1つにまとめる
@@ -131,7 +128,7 @@ export async function fetchSnf() {
   const warnings = notices.length || !/>運航状況</.test(box) ? [] : ["新日本海フェリー: 運航状況のお知らせが読めない"];
 
   // お知らせの本文（自社サイトのものだけ）。取れなくてもトップの状態は出す（sailings: null は「便ごとの状況は読めていない」）
-  noticeTexts.clear();
+  for (const k of noticeTexts.keys()) if (k.startsWith("snf ")) noticeTexts.delete(k);
   for (const n of notices.slice(0, MAX_NOTICES)) {
     n.time = null;
     n.sailings = null;
@@ -140,7 +137,7 @@ export async function fetchSnf() {
     try {
       const { text, ...parsed } = parseNotice(await get(n.url.replace(/^http:/, "https:")), n.date);
       Object.assign(n, parsed);
-      if (text) noticeTexts.set(n.url, text);
+      if (text) noticeTexts.set(`snf ${n.url}`, text);
     } catch {
       n.sailings = null;
     }

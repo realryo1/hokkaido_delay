@@ -108,10 +108,12 @@ export function initPlan() {
   let tomakomai = null; // services.chuobus.groups の tomakomai
 
   // シルバーフェリーの便の今の状況。お知らせから読んだ便ごとの状況があればそれを、なければトップの状態を使う
+  // 正規表現で読んだ便（確かな情報）を優先し、なければ LLM が読んだ便
   function silverBadge(s) {
     if (!silver) return "";
     if (!silver.ok) return badge("unknown", "状況を取得できず");
-    const hit = (silver.sailings || []).find((x) => x.date === s.date && x.from === "苫小牧" && x.time === s.time);
+    const same = (silver.sailings || []).filter((x) => x.date === s.date && x.from === "苫小牧" && x.time === s.time);
+    const hit = same.find((x) => x.source !== "llm") || same[0];
     if (hit) return badge(hit.status, hit.label);
     if (silver.status === "normal") return badge("normal", "通常運航");
     return badge("delay", "欠航・遅延あり（公式で確認）");

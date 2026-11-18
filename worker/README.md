@@ -26,10 +26,11 @@
 | `src/sources/chuobus.js` | 北海道中央バス 空港連絡バス・高速おたる号・高速とまこまい号（運休情報の RSS `chuo-bus.co.jp/support/stop/?ope=feed&topic=stop_list`） |
 | `src/sources/hokto.js` | 北都交通 空港連絡バス（`hokto.co.jp` のトップ） |
 | `src/sources/silverferry.js` | シルバーフェリー（`silverferry.jp` のトップ。欠航・遅延のときはリンク先のお知らせから便ごとの状況も） |
-| `src/sources/sunflower.js` | さんふらわあ 大洗〜苫小牧（`sunflower.co.jp` のトップ） |
+| `src/sources/sunflower.js` | さんふらわあ 大洗〜苫小牧（`sunflower.co.jp` のトップ。平常時以外は欄の中の便ごとの状況も） |
 | `src/sources/snf.js` | 新日本海フェリー（`snf.jp` のトップのヘッダーと、お知らせがあるときはお知らせの本文） |
-| `src/snfNotes.js` | 新日本海フェリーのお知らせの要約・補足・正規表現で読まない便を Claude Haiku 5.5 で読み、便に重ねる（本文が変わったときだけ呼ぶ） |
-| `scripts/snf-llm-local.mjs` | 保存したお知らせの HTML で、上の LLM の処理を手元で試す（`worker/.env` の `ANT_API_TOKEN` を使う。1件0.1円ほどかかる） |
+| `src/notes.js` | フェリー3社（新日本海フェリー・シルバーフェリー・さんふらわあ）のお知らせの要約・補足・正規表現で読まない便を Claude Haiku 5.5 で読み、便に重ねる（平常時は呼ばず、本文が変わったときだけ呼ぶ） |
+| `src/noticeTexts.js` | 上に渡すお知らせの本文の置き場所（JSON には入れない） |
+| `scripts/llm-local.mjs` | 保存したお知らせの HTML で、上の LLM の処理を手元で試す（`worker/.env` の `ANT_API_TOKEN` を使う。1件0.1〜0.2円ほどかかる）。`node scripts/llm-local.mjs snf 2026-01-09 a.html silverferry b.html sunflower c.html` |
 | `src/sources/taiheiyo.js` | 太平洋フェリー 名古屋・仙台〜苫小牧（`taiheiyo-ferry.co.jp` のトップの「運航状況」欄） |
 | `src/http.js` | 取得の共通設定（User-Agent、8秒のタイムアウト、`Last-Modified` の読み取り）と日本時間の時刻 |
 | `scripts/collect-local.mjs` | Cloudflare を使わずに収集だけ1回動かす |
@@ -80,7 +81,7 @@ node worker/scripts/collect-local.mjs out.json   # ファイルへ
 
 | 結果 | 条件 |
 | --- | --- |
-| 503 | `updated_at` が17分以上古い（Cron が3回動いていない）／同じ事業者で3回続けて失敗／`source_warnings` がある／KV にデータがない／新日本海フェリーの LLM が同じお知らせで3回続けて失敗（前払いの残高切れを含む）か、API キー（`ANT_API_TOKEN`）がない |
+| 503 | `updated_at` が17分以上古い（Cron が3回動いていない）／同じ事業者で3回続けて失敗／`source_warnings` がある／KV にデータがない／フェリーの LLM が同じお知らせで3回続けて失敗（前払いの残高切れを含む）か、API キー（`ANT_API_TOKEN`）がない |
 | 200 | それ以外。1〜2回だけの失敗は `notes` に載る |
 
 ```jsonc
@@ -93,7 +94,7 @@ node worker/scripts/collect-local.mjs out.json   # ファイルへ
 - KV 書き込み：1日1,000回（5分ごとで1日288回）
 - KV 読み取り：1日10万回（isolate のメモリに60秒持つので実際はもっと少ない。`/health` も同じ）
 - WAF でブロックしたリクエストは Workers のリクエスト数に入らない。Worker の中で 403 にしたもの（Origin・国外）は入る
-- Claude API（無料枠ではなく前払い）：Haiku 5.5 で1件約$0.001（入力約2,700・出力300〜2,400トークン）。お知らせの本文が変わったときだけ呼ぶ
+- Claude API（無料枠ではなく前払い）：Haiku 5.5 で1件約$0.001（入力2,500〜3,900・出力500〜2,500トークン）。フェリー3社とも、平常時は呼ばず、お知らせの本文が変わったときだけ呼ぶ
 
 ## 障害時の動き
 
@@ -102,5 +103,5 @@ node worker/scripts/collect-local.mjs out.json   # ファイルへ
 - 一部だけ読めない（構造変更の疑い）ときは `meta.source_warnings` に入る。まったく読めないときは失敗扱い
 - Worker に一度もつながらないときは、ページに各社の公式リンクが出る
 - `updated_at` が20分以上古いと、ページに「情報の更新が止まっています」と出る
-- 新日本海フェリーの LLM が失敗したとき（前払いの残高切れを含む）は、そのお知らせの `llm` に `ok: false` と `error` が入り、ページは正規表現で読んだ便だけになる。同じ本文では3回まで続けて試し、そのあとは1時間に1回呼び直す（残高を足せば戻る）。`/health` には `snf: LLM: …` として出る（上の表）。キーがないときは、置いた次の回に呼ぶ
+- フェリーの LLM が失敗したとき（前払いの残高切れを含む）は、そのお知らせの `llm`（シルバーフェリー・さんふらわあはサービスの `llm`）に `ok: false` と `error` が入り、ページは正規表現で読んだ便だけになる。同じ本文では3回まで続けて試し、そのあとは1時間に1回呼び直す（残高を足せば戻る）。`/health` には `snf: LLM: …`（`silverferry`・`sunflower`）として出る（上の表）。キーがないときは、置いた次の回に呼ぶ
 - JR北海道と札幌市の配信元は Imperva（ボット対策）の配下。今は Cloudflare から取得できているが、弾かれるようになったら `source_errors` に出る

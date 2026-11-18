@@ -152,9 +152,18 @@
       "status": "delay",
       "message": "欠航または遅延便があります",
       "notice_url": "https://www.silverferry.jp/",
+      "posted": "2027-02-06",
+      "unread": 0,
+      "llm": {
+        "hash": "sample",
+        "ok": true,
+        "model": "claude-haiku-5-5",
+        "summary": "サンプル：低気圧の影響で2月6日の苫小牧発21:15便・23:59便が欠航。八戸発13:00便は苫小牧への入港が遅れる見込み。",
+        "general": ["サンプル：2月7日以降は全便通常運航予定"]
+      },
       "sailings": [
-        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "08:45", "ship": "シルバープリンセス", "status": "normal", "label": "出港済" },
-        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "13:00", "ship": "シルバーティアラ", "status": "delay", "label": "運航予定・遅れ見込み" },
+        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "08:45", "ship": "シルバープリンセス", "status": "normal", "label": "出港済", "depart": "定刻" },
+        { "date": "2027-02-06", "from": "八戸", "to": "苫小牧", "time": "13:00", "ship": "シルバーティアラ", "status": "delay", "label": "運航予定・遅れ見込み", "arrive": "遅れ見込み", "arrive_at": { "at": "2027-02-06T23:30", "done": false } },
         { "date": "2027-02-06", "from": "苫小牧", "to": "八戸", "time": "21:15", "ship": "シルバープリンセス", "status": "suspended", "label": "欠航" },
         { "date": "2027-02-06", "from": "苫小牧", "to": "八戸", "time": "23:59", "ship": "シルバーティアラ", "status": "suspended", "label": "欠航" }
       ]
@@ -168,7 +177,21 @@
       "fail_count": 0,
       "source_time": "2027-02-06T09:00:00+09:00",
       "status": "suspended",
-      "label": "欠航あり"
+      "label": "欠航あり",
+      "posted": "2027-02-06",
+      "unread": 0,
+      "llm": {
+        "hash": "sample",
+        "ok": true,
+        "model": "claude-haiku-5-5",
+        "summary": "サンプル：海上荒天のため2月6日の大洗発深夜便が欠航。苫小牧発深夜便は出港が遅れ、大洗への到着も遅れる見込み。",
+        "general": ["サンプル：1〜3月の毎週日曜の苫小牧発深夜便は00:10発"]
+      },
+      "sailings": [
+        { "date": "2027-02-06", "from": "大洗", "to": "苫小牧", "time": "01:45", "kind": "深夜便", "ship": "さんふらわあ かむい", "status": "suspended", "label": "欠航" },
+        { "date": "2027-02-06", "from": "苫小牧", "to": "大洗", "time": "01:30", "kind": "深夜便", "ship": "さんふらわあ ぴりか", "status": "delay", "label": "遅れ", "depart_at": { "at": "2027-02-06T05:00", "done": true }, "arrive": "遅れ見込み" },
+        { "date": "2027-02-06", "from": "大洗", "to": "苫小牧", "time": "19:45", "kind": "夕方便", "ship": "さんふらわあ ふらの", "status": "normal", "label": "臨時便", "notes": ["船舶入替"] }
+      ]
     },
     "snf": {
       "name": "新日本海フェリー（舞鶴・敦賀・新潟・秋田〜小樽・苫小牧東）",

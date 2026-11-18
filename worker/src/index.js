@@ -3,7 +3,7 @@
 // - fetch：KV の JSON を CORS ヘッダー付きで返す（閲覧が増えても事業者へのアクセスは Cron の回数のまま）
 // - /health：外部の監視サービス向け。異常があれば 503 を返す（KV を読むだけで、事業者へは取りに行かない）
 import { collect, jstIso } from "./collect.js";
-import { addSnfNotes, MAX_FAILS as LLM_MAX_FAILS } from "./snfNotes.js";
+import { addNotes, llmResults, MAX_FAILS as LLM_MAX_FAILS } from "./notes.js";
 
 const KEY = "status";
 // wrangler.toml の crons と合わせる（次回の予定時刻 next_update_at の計算に使う）
@@ -89,12 +89,11 @@ function health(data) {
     (failCount[e.id] >= HEALTH_FAIL_COUNT ? problems : notes).push(text);
   }
   for (const w of data.meta?.source_warnings || []) problems.push(`${w.id}: ${w.message}`);
-  // 新日本海フェリーの LLM（Haiku 5.5）：キーがない・同じお知らせで3回続けて失敗（前払いの残高切れを含む）なら異常、1〜2回なら notes
+  // フェリーのお知らせの LLM（Haiku 5.5）：キーがない・同じお知らせで3回続けて失敗（前払いの残高切れを含む）なら異常、1〜2回なら notes
   // 失敗してもページは正規表現で読んだ便だけを出すので、ほかの事業者の取得失敗とは分けて数える
-  for (const n of data.services?.snf?.notices || []) {
-    const l = n.llm;
-    if (!l || l.ok) continue;
-    const text = `snf: LLM: ${l.error}${l.nokey ? "" : `（${l.fails}回連続）`}`;
+  for (const [id, l] of llmResults(data.services)) {
+    if (l.ok) continue;
+    const text = `${id}: LLM: ${l.error}${l.nokey ? "" : `（${l.fails}回連続）`}`;
     (l.nokey || l.fails >= LLM_MAX_FAILS ? problems : notes).push(text);
   }
   return { ok: problems.length === 0, updated_at: data.updated_at, problems, notes };
@@ -106,11 +105,11 @@ export default {
       (async () => {
         const prev = await env.DELAY_KV.get(KEY, "json").catch(() => null);
         const next = await collect(prev);
-        // 新日本海フェリーのお知らせの補足を LLM で読む（本文が変わったときだけ呼ぶ）。失敗しても収集の結果は保存する
+        // フェリーのお知らせの要約・補足を LLM で読む（平常時は呼ばず、本文が変わったときだけ呼ぶ）。失敗しても収集の結果は保存する
         try {
-          await addSnfNotes(env, next.services.snf, prev?.services?.snf);
+          await addNotes(env, next.services, prev?.services);
         } catch (e) {
-          next.meta.source_errors.push({ id: "snf", message: `LLM: ${String(e?.message || e).slice(0, 180)}` });
+          next.meta.source_errors.push({ id: "llm", message: `LLM: ${String(e?.message || e).slice(0, 180)}` });
         }
         // scheduledTime はこの回の予定時刻（例 21:02:00）。次の回はその INTERVAL_MIN 分後
         next.next_update_at = jstIso(new Date(event.scheduledTime + INTERVAL_MIN * 60000));
