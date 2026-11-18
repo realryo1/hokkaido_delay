@@ -211,7 +211,7 @@ function renderMap(groups) {
 export function renderSummary(services) {
   const groups = Object.fromEntries(SUMMARY.map((dest) => [dest.id, judge(dest, services)]));
   return `<section class="dl-card dl-summary" id="dl-summary">
-      <h2 class="dl-card__title">行き先ごとのまとめ</h2>
+      <h2 class="dl-card__title">行き先ごとのまとめ（路線タップで詳細）</h2>
       ${renderMap(groups)}
       <p class="dl-map__legend">${[
         ["normal", "平常"],

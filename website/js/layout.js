@@ -78,19 +78,80 @@ function initSplit() {
   });
 }
 
-// 狭い画面のタブ（delay.css の .dl-tabs）。2カラムのときはタブを隠すだけで、.is-active は見た目に影響しない
-// 列を出すだけなので、←→ でフォーカスが移ったらすぐその列を出す
+// 狭い画面のタブ（delay.css の .dl-tabs）。2カラムのときはバーごと隠すだけで、.is-active は見た目に影響しない
+// 選んでいるボタンの下にガラスの板（.dl-tabs__glider）を敷き、押したりドラッグしたりすると指に追従する
 function initTabs() {
   const $list = document.querySelector(".dl-tabs");
   const $tabs = [...$list.querySelectorAll("[data-tab]")];
   const $cols = [...document.querySelectorAll("[data-col]")];
+  const $glider = document.createElement("span");
+  $glider.className = "dl-tabs__glider";
+  $glider.setAttribute("aria-hidden", "true");
+  $list.prepend($glider);
+  $list.style.setProperty("--n", $tabs.length);
+
   const showCol = (name) => {
-    selectTab($list, $tabs.find(($t) => $t.dataset.tab === name));
+    const i = Math.max(0, $tabs.findIndex(($t) => $t.dataset.tab === name));
+    selectTab($list, $tabs[i]);
+    $list.style.setProperty("--i", i);
     for (const $c of $cols) $c.classList.toggle("is-active", $c.dataset.col === name);
   };
-  selectTab($list, $tabs.find(($t) => $t.getAttribute("aria-selected") === "true"));
+  showCol($tabs.find(($t) => $t.getAttribute("aria-selected") === "true")?.dataset.tab || $tabs[0].dataset.tab);
   initTablist($list, ($t) => showCol($t.dataset.tab));
+
+  // ポインター操作（タップ・ドラッグ）でガラス板を動かす
+  let drag = null;
+  let suppressUntil = 0;
+  const indexAt = (x) => Math.max(0, Math.min($tabs.length - 1, Math.floor((x - drag.start) / drag.w)));
+  const hoverAt = (i) => $tabs.forEach(($t, k) => $t.classList.toggle("is-hover", k === i));
+  const end = (ev) => {
+    if (!drag) return;
+    const $target = ev.type === "pointerup" ? $tabs[indexAt(ev.clientX)] : null;
+    $tabs.forEach(($t) => $t.classList.remove("is-hover"));
+    drag = null;
+    $list.classList.remove("is-pressed", "is-dragging");
+    $glider.style.transform = "";
+    if (!$target) return;
+    suppressUntil = performance.now() + 500;
+    showCol($target.dataset.tab);
+  };
+  $list.addEventListener("pointerdown", (ev) => {
+    if (ev.button || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+    const r = $list.getBoundingClientRect();
+    const pad = parseFloat(getComputedStyle($list).paddingLeft);
+    drag = { id: ev.pointerId, x0: ev.clientX, start: r.left + pad, w: (r.width - pad * 2) / $tabs.length, moved: false };
+    $list.setPointerCapture(ev.pointerId);
+    $list.classList.add("is-pressed");
+    const i = indexAt(ev.clientX);
+    $glider.style.transform = `translateX(${i * drag.w}px)`;
+    hoverAt(i);
+  });
+  $list.addEventListener("pointermove", (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    if (!drag.moved) {
+      if (Math.abs(ev.clientX - drag.x0) < 6) return;
+      drag.moved = true;
+      $list.classList.add("is-dragging");
+    }
+    $glider.style.transform = `translateX(${Math.max(0, Math.min(drag.w * ($tabs.length - 1), ev.clientX - drag.start - drag.w / 2))}px)`;
+    hoverAt(indexAt(ev.clientX));
+  });
+  for (const type of ["pointerup", "pointercancel"]) $list.addEventListener(type, end);
+  $list.addEventListener(
+    "click",
+    (ev) => {
+      if (ev.isTrusted && performance.now() < suppressUntil) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+      }
+    },
+    true
+  );
   for (const $t of $tabs) $t.addEventListener("click", () => showCol($t.dataset.tab));
+
+  // 上に戻るボタン：押したら先頭へスクロールする
+  document.getElementById("toTop")?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: scrollBehavior() }));
+
   // まとめの線（#dl-jr など）が指すカードの列を出してから移る（隠れた列の中へはリンクで移れないため）
   document.addEventListener("click", (ev) => {
     const $a = ev.target.closest?.('a[href^="#dl-"]');

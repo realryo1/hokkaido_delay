@@ -41,12 +41,6 @@
       <!-- 取得できない・更新が止まったなどのお知らせ。読み上げソフトに伝える（中身が変わったときだけ書き換える。js/main.js の setBanners） -->
       <div id="banners" role="status"></div>
 
-      <!-- ←→ キーでタブのあいだを移る（focusgroup。持っていないブラウザは js/tabs.js が同じ動きをする） -->
-      <div class="dl-tabs" role="tablist" aria-label="表示の切り替え" focusgroup="tablist nomemory">
-        <button type="button" class="dl-tabs__btn" role="tab" id="tab-now" data-tab="now" aria-selected="true" focusgroupstart>運行状況</button>
-        <button type="button" class="dl-tabs__btn" role="tab" id="tab-plan" data-tab="plan" aria-selected="false">もし飛行機が止まったら？</button>
-      </div>
-
       <div class="dl-col__body" role="tabpanel" aria-labelledby="tab-now">
         <div id="summary"></div>
         <div id="sections"></div>
@@ -102,5 +96,14 @@
     </footer>
     </div>
   </main>
+
+  <!-- スマホ表示の画面下端に独立して置くガラスの切り替えバーと上に戻るボタン（←→ キーで移る：focusgroup / js/tabs.js） -->
+  <nav class="dl-tabbar" aria-label="表示の切り替え">
+    <div class="dl-tabs" role="tablist" aria-label="表示の切り替え" focusgroup="tablist nomemory">
+      <button type="button" class="dl-tabs__btn" role="tab" id="tab-now" data-tab="now" aria-selected="true" focusgroupstart>運行状況</button>
+      <button type="button" class="dl-tabs__btn" role="tab" id="tab-plan" data-tab="plan" aria-selected="false">もし飛行機が止まったら？</button>
+    </div>
+    <button type="button" class="dl-top" id="toTop" aria-label="ページの先頭へ戻る">▲ 上へ</button>
+  </nav>
 </body>
 </html>
