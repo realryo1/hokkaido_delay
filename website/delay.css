@@ -1,6 +1,76 @@
-/* 北海道運行情報（試験版）。配色トークン・フォント・背景は base.css（姉妹プロジェクトのカレンダーと共通の値）のものを使う */
+/* 北海道運行情報（試験版）のスタイル。1枚のファイルに、土台（配色・フォント・背景・フッター）と画面の部品を置く。
+   配色はSNOWMIKU2027公式サイトのパレットに準拠（姉妹プロジェクトのカレンダーと同じ色から始めたが、今はこのページだけで決める） */
 :root {
-  --gap: 10px; /* ページの隙間（カレンダーの style.css の --gap と同じ値） */
+  --col-ink: #4F458F;
+  --col-ink-primary: #DD67E2;
+  --col-paper: #FFFFFF;
+  --col-paper-muted: #F8F8F8;
+  --col-primary: #e9a1eb;
+  --col-primary-light: #F7BFFF;
+  --col-primary-dark: #873890;
+  --col-secondary: #9185DE;
+  --col-secondary-light: #BFB5FF;
+  --col-secondary-lighter: #f4f1ff;
+  --col-secondary-dark: #6E63B3;
+  --col-link: #D08100;
+  --col-link-light: #ffc567;
+  --col-link-lighter: #ffe7b8;
+  --col-gold-dark: #736B32;
+  --col-gold: #D9CA5E;
+  --col-fan: #C2354F;
+  --brand-gradient: linear-gradient(135deg, #9185de 0%, #e9a1eb 100%);
+
+  /* 本文は端末のフォント（Webフォントは読み込みが重いので、見出し用の Dela Gothic One だけ） */
+  --font-base: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
+  --font-display: "Dela Gothic One", var(--font-base);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; } /* iPhoneで端を越えて引っ張れる（ゴム紐のような）挙動を止める */
+html { touch-action: pan-x pan-y; } /* 二本指・ダブルタップでページ全体が拡大されないように（iPhoneで拡大のあと「繰り返しエラー」になることがある） */
+/* ページ全体のスクロールバーは、画面の幅によらず出さない（ホイール・タッチ・キーではスクロールできる） */
+html { scrollbar-width: none; }
+
+body {
+  margin: 0;
+  font-family: var(--font-base);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: .04em;
+  font-feature-settings: "palt";
+  color: var(--col-ink);
+  background: var(--col-secondary-lighter);
+  min-height: 100dvh;
+}
+/* 背景のぼかしは画面に固定した別のレイヤーに描く（background-attachment: fixed だと、スクロールのたびに画面全体を描き直すため） */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 10% 0%, var(--col-primary-light) 0, transparent 40%),
+    radial-gradient(circle at 100% 20%, var(--col-secondary-light) 0, transparent 35%);
+  will-change: transform;
+  pointer-events: none;
+}
+
+button { font: inherit; color: inherit; }
+
+/* ---------- フッター ---------- */
+.site-footer {
+  padding: 20px 16px 32px;
+  font-size: .75rem;
+  text-align: center;
+  opacity: .8;
+}
+
+/* ---------- ここから画面の部品 ---------- */
+:root {
+  --gap: 10px; /* ページの隙間（2カラムの外周・持ち手の列） */
   /* 状態の色：平常は落ち着いた紫、遅れは橙、運休は赤、不明は灰 */
   --st-normal: var(--col-secondary-dark);
   --st-normal-bg: var(--col-secondary-lighter);
@@ -97,10 +167,11 @@
 }
 .dl-head__reload:disabled { opacity: .5; cursor: wait; }
 
-/* ---------- 2カラム（カレンダー・マップと同じ） ----------
-   641px 以上：左に運行状況のパネル（画面に固定し、中だけスクロール）、持ち手、右に「もし飛行機が止まったら？」とフッター（ページごとスクロール）。
-   パネルの幅（--board-w）は持ち手で変えられる（delay.js が .dl に入れる）。
-   640px 以下：タブで1列ずつ出す。見出し・お知らせ・タブは運行状況の列にあるので、その列は中身（.dl-col__body）だけを隠す。どの列を出すかは delay.js が .is-active で切り替える */
+/* ---------- 2カラム ----------
+   641px 以上：左に運行状況のパネル、持ち手、右に「もし飛行機が止まったら？」とフッター（.dl-right）。左右の列はどちらも画面の高さの枠で、中だけスクロールする（ページ全体はスクロールしない）。
+   タッチでは左右の列を別々の指で同時に動かせるよう、列は touch-action: none にして、指の動きは js/touchpan.js が受ける（ブラウザ標準のスクロールは同時に1か所しか動かない）。
+   パネルの幅（--board-w）は持ち手で変えられる（js/layout.js が .dl に入れる）。
+   640px 以下：タブで1列ずつ出し、ページ全体がスクロールする。見出し・お知らせ・タブは運行状況の列にあるので、その列は中身（.dl-col__body）だけを隠す。どの列を出すかは js/layout.js が .is-active で切り替える */
 .dl-tabs {
   position: sticky;
   top: 0;
@@ -145,23 +216,24 @@
     grid-template-rows: auto 1fr;
     align-items: start;
     padding: 0;
-    transition: --split-extra .2s cubic-bezier(.22, 1, .36, 1);
+    /* 列が広がる動きは、「動きを減らす」設定でないときだけ付ける */
+    @media (prefers-reduced-motion: no-preference) {
+      transition: --split-extra .2s cubic-bezier(.22, 1, .36, 1);
+    }
   }
   .dl:has(> .dl-split:is(:hover, :focus-visible, .is-dragging)) { --split-extra: 12px; }
-  @media (prefers-reduced-motion: reduce) {
-    .dl { transition: none; }
-  }
   .dl-tabs { display: none; }
-  /* ページ（右の列）のスクロールバーも出さない（スクロールはできる。左のパネルと同じ） */
-  html { scrollbar-width: none; }
-  html::-webkit-scrollbar { display: none; }
+  /* 左右の列：1本指の動きは js/touchpan.js が受けて、列ごとに独立してスクロールさせる */
+  .dl-board,
+  .dl-right { touch-action: none; }
+  /* 便の表の横スクロールは標準のまま（縦の動きは js/touchpan.js が列ごと動かす） */
+  .dl-flights { touch-action: pan-x; }
   .dl-board {
     grid-row: 1 / span 2;
     position: sticky;
     top: var(--gap);
-    height: calc(100svh - var(--gap) * 2);
     height: calc(100dvh - var(--gap) * 2);
-    /* 上下・左の隙間（右の隙間は持ち手の列）。上の隙間を sticky の top だけで作ると、右の列が短い（新千歳空港を選んだときなど）とページの高さがパネルと同じになり、ずらす余地がなくて上に張り付く */
+    /* 上下・左の隙間（右の隙間は持ち手の列）。高さと上下の隙間を足すと画面の高さちょうどなので、ページ全体はスクロールしない */
     margin: var(--gap) 0 var(--gap) var(--gap);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -170,7 +242,6 @@
     background: var(--col-paper);
     box-shadow: 0 4px 16px rgb(79 69 143 / .08);
   }
-  .dl-board::-webkit-scrollbar { display: none; }
   .dl-head {
     position: sticky;
     top: 0;
@@ -198,11 +269,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: calc(100svh - var(--gap) * 2);
     height: calc(100dvh - var(--gap) * 2);
     margin: var(--gap) 0; /* .dl-board と同じ */
     cursor: col-resize;
-    touch-action: none;
+    touch-action: pan-y; /* 横に動かすのはこちらで受け、縦のスワイプはブラウザに任せる */
     outline: none;
   }
   .dl-split::before {
@@ -211,13 +281,30 @@
     height: 48px;
     border-radius: 999px;
     background: var(--col-secondary-light);
-    transition: background-color .15s, width .15s, height .15s;
+    /* 色の変化はいつも、つまみが伸びる動きは「動きを減らす」設定でないときだけ */
+    transition: background-color .15s;
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color .15s, width .15s, height .15s;
+    }
   }
   .dl-split:hover::before,
   .dl-split:focus-visible::before,
   .dl-split.is-dragging::before { width: 10px; height: 72px; background: var(--col-primary); }
+  /* 右の列：画面の高さの枠で、中だけスクロールする（スクロールバーは出さない）。
+     枠の外は切れるので、カードの左の影が消えないよう、枠を持ち手と左のパネルの下まで16px広げ、同じだけ内側を空ける
+     （持ち手と左のパネルは position: sticky で上に重なるので、押したときはそちらが受ける） */
+  .dl-right {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    margin-left: -16px;
+    padding-left: 16px;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
   .dl-side { padding: var(--gap) var(--gap) 0 0; }
-  .site-footer.dl-foot { grid-column: 3; max-width: none; margin: 0; padding-right: calc(var(--gap) + 16px); }
+  .site-footer.dl-foot { max-width: none; margin: 0; padding-right: calc(var(--gap) + 16px); }
 }
 
 /* ---------- 全体の注意 ---------- */
@@ -245,6 +332,10 @@
   align-items: center;
   margin: 4px 0 18px;
 }
+/* マスの置き場所は summary.js が style の --row・--col（駅のカプセルは --col-end まで）で渡す */
+.dl-map > .dl-track,
+.dl-map > .dl-map__side { grid-area: var(--row) / var(--col); }
+.dl-map > .dl-map__stop { grid-area: var(--row) / var(--col) / auto / var(--col-end); }
 .dl-map__side { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; padding: 4px 0 4px 12px; }
 .dl-map__side .dl-badge { white-space: normal; }
 /* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
@@ -411,7 +502,7 @@
 }
 .dl-plan__jump::after { content: " →"; }
 .dl-plan__jump:hover { background: var(--col-secondary-lighter); }
-/* 作者の経験からの参考情報（公式の案内ではない）。姉妹プロジェクトのカレンダーの補足（sm27calendar の style.css の .vc-ev__note）と同じ黄色の縦棒 */
+/* 作者の経験からの参考情報（公式の案内ではない）。公式の案内と見分けられるよう、金色の縦棒を付ける */
 .dl-plan__tip { margin: 8px 0 0; padding-left: 10px; font-size: .78rem; border-left: 3px solid var(--col-gold); }
 .dl-plan__night { color: var(--st-delay); }
 /* 計算の前提・注意・出典は1つにまとめて折りたたむ（初めは閉じる） */
@@ -712,9 +803,8 @@ tr.dl-air--FDA > td.dl-airname {
 
 .dl-foot { text-align: left; }
 
-/* ---------- スマホ表示（姉妹プロジェクトのカレンダーと同じく 640px 以下） ----------
-   枠が「ページの余白 → カード → 樹形図の箱」と重なり、左右の余白が積み重なるので、
-   姉妹プロジェクトのカレンダーの時間割（sm27calendar の style.css の .board）と同じく画面の幅をいっぱいに使う */
+/* ---------- スマホ表示（640px 以下） ----------
+   枠が「ページの余白 → カード → 樹形図の箱」と重なり、左右の余白が積み重なるので、画面の幅をいっぱいに使う */
 @media (max-width: 640px) {
   /* カードは画面の端から端まで。見出し・お知らせの帯は読みやすいよう左右に余白を残す */
   .dl { padding: 12px 0 0; }

@@ -1,13 +1,12 @@
-// 路線図の配線エディタ。手元で index.html?sample&edit を開いたときだけ delay.js が読み込む（公開ページでは読み込まない）
-// routemap.js の window.DL_ROUTEMAP をその場で書き換えて描き直し、「保存」で routemap.js を書き直す。
+// 路線図の配線エディタ。手元で index.html?sample&edit を開いたときだけ main.js が import() で読み込む（公開ページでは読み込まない）
+// routemap.js の ROUTEMAP をその場で書き換えて描き直し、「保存」で routemap.js を書き直す。
 // 地図の線を押すとその手段の行を選び、選んでいるあいだは ← → で列を動かせる
-(() => {
-  const edit = window.DL_EDIT;
-  const data = window.DL_ROUTEMAP;
-  if (!edit || !data) return;
+import { esc } from "./util.js";
 
-  const esc = (s) =>
-    String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// edit：map（routemap.js の ROUTEMAP）、summary（summary.js の SUMMARY）、rerender（まとめを描き直す関数）。
+// 配線は main.js から受け取る（ここで routemap.js を読み込むと、公開用に1本にまとめた版では別のものを書き換えてしまうため）
+export function startEditor(edit) {
+  const data = edit.map;
   // 手段の一覧（SUMMARY の順）。駅から横に出す枝の行き先（地下鉄など）は置き方を持たないので除く
   const branchIds = () => new Set(data.stations.map((s) => s.branch).filter(Boolean));
   const groups = edit.summary.map((g) => ({ id: g.id, name: g.name, means: g.means.map((m) => m.name) }));
@@ -142,7 +141,7 @@
   function format() {
     const lines = Object.entries(data.lines).map(([name, l]) => `    ${j(name)}: ${j(sorted(l))}`);
     const caps = Object.entries(data.captions).map(([id, above]) => `    ${j(id)}: ${j(above)}`);
-    return `window.DL_ROUTEMAP = {
+    return `export const ROUTEMAP = {
   "stations": [
 ${data.stations.map((s) => `    ${j(sorted(s))}`).join(",\n")}
   ],
@@ -163,8 +162,8 @@ ${caps.join(",\n")}
   async function fileText() {
     let head = "";
     try {
-      const text = await (await fetch("routemap.js", { cache: "no-store" })).text();
-      head = text.slice(0, Math.max(0, text.indexOf("window.DL_ROUTEMAP")));
+      const text = await (await fetch(new URL("routemap.js", import.meta.url), { cache: "no-store" })).text();
+      head = text.slice(0, Math.max(0, text.indexOf("export const ROUTEMAP")));
     } catch {}
     return head + format();
   }
@@ -192,14 +191,14 @@ ${caps.join(",\n")}
         fileHandle = null;
       }
     }
-    // ファイルに直接書けないブラウザ：ダウンロードして website/routemap.js に置き換えてもらう
+    // ファイルに直接書けないブラウザ：ダウンロードして website/js/routemap.js に置き換えてもらう
     const $a = document.createElement("a");
     $a.href = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
     $a.download = "routemap.js";
     $a.click();
     URL.revokeObjectURL($a.href);
     dirty = false;
-    status("ダウンロードしました。website/routemap.js と置き換えてください");
+    status("ダウンロードしました。website/js/routemap.js と置き換えてください");
   }
   async function copy() {
     await navigator.clipboard.writeText(await fileText());
@@ -422,7 +421,7 @@ ${caps.join(",\n")}
     changed();
   });
 
-  // 地図の線を押すと、カードへ移る代わりにその線を選ぶ（delay.js のリンクの処理より先に止める）
+  // 地図の線を押すと、カードへ移る代わりにその線を選ぶ（layout.js のリンクの処理より先に止める）
   document.addEventListener(
     "click",
     (ev) => {
@@ -451,4 +450,4 @@ ${caps.join(",\n")}
   });
 
   draw();
-})();
+}

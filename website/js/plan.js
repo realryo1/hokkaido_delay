@@ -1,7 +1,11 @@
 // もし飛行機が止まったら？：フェリーで本州へ渡る経路の案内（札幌・新千歳・小樽にいる場合に分ける）
 // 時刻表と所要時間は公式の案内（index.html の出典）から手で写したもの。事業者サイトへは取りに行かない。
-// 運行情報（delay.js が取得した JSON）が届いたら、フェリー・バスの今の状況を重ねる。
-(() => {
+// 運行情報（main.js が取得した JSON）が届いたら、フェリー・バスの今の状況を重ねる。
+import { esc, md, badge, scrollBehavior } from "./util.js";
+import { initTablist, selectTab } from "./tabs.js";
+
+// 時刻表と計算・描画を用意し、運行情報を重ねる関数を返す（main.js が JSON を取得するたびに呼ぶ）
+export function initPlan() {
   // シルバーフェリー 苫小牧発 → 八戸着（公式「航路・時刻」2026-10-26 確認）。定期検査・代船の期間は変わることがある
   // shuttle：八戸港フェリーターミナル → 本八戸駅のシャトルバス（南部バス）。朝の2本だけ
   const SILVER = [
@@ -76,11 +80,12 @@
   const $time = document.getElementById("plan-time");
   const $now = document.getElementById("plan-now");
   const $tree = document.getElementById("plan-tree");
-  const $origins = [...document.querySelectorAll(".dl-plan__origin")];
-  if (!$time || !$tree) return;
+  const $from = document.querySelector(".dl-plan__from");
+  const $origins = [...$from.querySelectorAll(".dl-plan__origin")];
+  if (!$time || !$tree) return () => {};
+  // 選ぶとこの端末に覚えるので、←→ で移るだけでは選ばない（tabs.js）
+  initTablist($from);
 
-  const esc = (s) =>
-    String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pad = (n) => String(n).padStart(2, "0");
   const toMin = (hhmm) => +hhmm.slice(0, 2) * 60 + +hhmm.slice(3, 5);
   const fmt = (min) => {
@@ -94,12 +99,10 @@
   };
   const addDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
   const weekday = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay();
-  const md = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}`;
   const span = (min) => (min >= 60 ? `${Math.floor(min / 60)}時間${min % 60 ? `${min % 60}分` : ""}` : `${min}分`);
   const DAY = ["今日", "明日", "明後日", "3日後"];
-  const badge = (status, label) => `<span class="dl-badge dl-badge--${esc(status)}">${esc(label)}</span>`;
 
-  // ---------- 運行情報（delay.js から） ----------
+  // ---------- 運行情報（main.js から） ----------
   let silver = null; // services.silverferry
   let snf = null; // services.snf
   let tomakomai = null; // services.chuobus.groups の tomakomai
@@ -311,7 +314,9 @@
     const now = jstNow();
     const base = $time.value ? toMin($time.value) : now.min;
     if (!$time.value) $time.value = fmt(base);
-    for (const $o of $origins) $o.setAttribute("aria-selected", String($o.dataset.plan === from));
+    const $selected = $origins.find(($o) => $o.dataset.plan === from);
+    selectTab($from, $selected);
+    $tree.setAttribute("aria-labelledby", $selected.id);
     $tree.innerHTML = `<ul>${branch(
       `<div class="dl-tree__box dl-tree__box--from"><span class="dl-tree__name">${esc(PLACE[from])}</span><span class="dl-tree__sub">${esc(fmt(base))}に出る</span></div>`,
       PORTS[from](base, now.date)
@@ -324,7 +329,7 @@
     const $b = ev.target.closest("[data-plan-go]");
     if (!$b) return;
     choose($b.dataset.planGo);
-    $tree.scrollIntoView({ behavior: "smooth", block: "start" });
+    $tree.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   });
 
   $time.addEventListener("input", render);
@@ -332,14 +337,14 @@
     $time.value = "";
     render();
   });
-  // delay.js が運行情報を取得するたびに知らせてくる
-  document.addEventListener("dl:data", (ev) => {
-    const sv = ev.detail?.services || {};
+  render();
+  // main.js が運行情報を取得するたびに呼ぶ
+  return (data) => {
+    const sv = data?.services || {};
     silver = sv.silverferry || null;
     snf = sv.snf || null;
     const g = sv.chuobus?.groups?.find((x) => x.id === "tomakomai");
     tomakomai = sv.chuobus ? { ok: sv.chuobus.ok && !!g, status: g?.status } : null;
     render();
-  });
-  render();
-})();
+  };
+}

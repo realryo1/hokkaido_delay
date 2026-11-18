@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <!-- 末尾スラッシュを強制する。無いと base.css などの相対パスが1階層上を指して壊れる。ファイル名のあるURL（index.html など）は対象外 -->
+  <!-- 末尾スラッシュを強制する。無いと delay.css・js/main.js などの相対パスが1階層上を指して壊れる。ファイル名のあるURL（index.html など）は対象外 -->
   <script>
     if (/\/[^/.]+$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
     // カレンダーのサイドバーから iframe で開いたとき（?embed=1）は、カレンダーへ戻るリンクを隠す（delay.css の .is-embed）
@@ -19,15 +19,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap"></noscript>
-  <!-- 配色・フォント・背景は姉妹プロジェクトのカレンダーとそろえたもの（base.css）、この画面の部品は delay.css に置く -->
-  <link rel="stylesheet" href="base.css">
+  <!-- 配色・フォント・背景・フッターと、この画面の部品は delay.css 1枚にまとめる -->
   <link rel="stylesheet" href="delay.css">
-  <script src="routemap.js" defer></script>
-  <script src="delay.js" defer></script>
-  <script src="plan.js" defer></script>
+  <!-- 入口は js/main.js（モジュールなので defer と同じく、HTML を読み終えてから動く）。公開時は deploy-pages.yml が1本にまとめる -->
+  <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <!-- カレンダー・マップと同じ2カラム（641px 以上）：左に運行状況のパネル（画面に固定し、中だけスクロール）、持ち手（幅を変える）、右に「もし飛行機が止まったら？」とフッター。
+  <!-- 2カラム（641px 以上）：左に運行状況のパネル、持ち手（幅を変える）、右に「もし飛行機が止まったら？」とフッター。左右の列はそれぞれ画面の高さの枠で、中だけスクロールする（タッチでは別々の指で同時に動かせる。js/touchpan.js）。
        640px 以下はタブで1列ずつ出す（見出し・お知らせ・タブは運行状況の列に入れ、どちらのタブでも出す。delay.css の .dl-col） -->
   <main class="dl">
     <div class="dl-col dl-board is-active" data-col="now">
@@ -40,14 +38,16 @@
         </p>
       </header>
 
-      <div id="banners"></div>
+      <!-- 取得できない・更新が止まったなどのお知らせ。読み上げソフトに伝える（中身が変わったときだけ書き換える。js/main.js の setBanners） -->
+      <div id="banners" role="status"></div>
 
-      <nav class="dl-tabs" role="tablist">
-        <button type="button" class="dl-tabs__btn" role="tab" data-tab="now" aria-selected="true">運行状況</button>
-        <button type="button" class="dl-tabs__btn" role="tab" data-tab="plan" aria-selected="false">もし飛行機が止まったら？</button>
-      </nav>
+      <!-- ←→ キーでタブのあいだを移る（focusgroup。持っていないブラウザは js/tabs.js が同じ動きをする） -->
+      <div class="dl-tabs" role="tablist" aria-label="表示の切り替え" focusgroup="tablist nomemory">
+        <button type="button" class="dl-tabs__btn" role="tab" id="tab-now" data-tab="now" aria-selected="true" focusgroupstart>運行状況</button>
+        <button type="button" class="dl-tabs__btn" role="tab" id="tab-plan" data-tab="plan" aria-selected="false">もし飛行機が止まったら？</button>
+      </div>
 
-      <div class="dl-col__body">
+      <div class="dl-col__body" role="tabpanel" aria-labelledby="tab-now">
         <div id="summary"></div>
         <div id="sections"></div>
 
@@ -63,7 +63,9 @@
 
     <div class="dl-split" id="split" role="separator" aria-orientation="vertical" aria-label="運行状況と「もし飛行機が止まったら？」の幅" tabindex="0"></div>
 
-    <div class="dl-col dl-side" data-col="plan">
+    <!-- 右の列（「もし飛行機が止まったら？」とフッター）。2カラムでは左のパネルと同じく、自分の枠の中でスクロールする（ページ全体はスクロールしない） -->
+    <div class="dl-right" id="right">
+    <div class="dl-col dl-side" data-col="plan" role="tabpanel" aria-labelledby="tab-plan">
       <!-- 1分ごとの描き直しで入力が消えないよう、#sections の外に置く（中身は plan.js） -->
       <section class="dl-card dl-plan" id="dl-plan">
         <h2 class="dl-card__title">もし飛行機が止まったら？</h2>
@@ -75,12 +77,13 @@
         </div>
 
         <!-- 今いる場所（木の根）。選んだ場所から伸びる枝を #plan-tree に描く（plan.js） -->
-        <div class="dl-plan__from" role="tablist">
-          <button type="button" class="dl-plan__origin" role="tab" data-plan="sapporo">札幌</button>
-          <button type="button" class="dl-plan__origin" role="tab" data-plan="chitose">新千歳空港</button>
-          <button type="button" class="dl-plan__origin" role="tab" data-plan="otaru">小樽・小樽築港・ウイングベイ</button>
+        <!-- 選ぶとこの端末に覚えるので、←→ で移るだけでは選ばず、Enter・スペースで選ぶ -->
+        <div class="dl-plan__from" role="tablist" aria-label="今いる場所" focusgroup="tablist nomemory">
+          <button type="button" class="dl-plan__origin" role="tab" id="plan-from-sapporo" data-plan="sapporo">札幌</button>
+          <button type="button" class="dl-plan__origin" role="tab" id="plan-from-chitose" data-plan="chitose">新千歳空港</button>
+          <button type="button" class="dl-plan__origin" role="tab" id="plan-from-otaru" data-plan="otaru">小樽・小樽築港・ウイングベイ</button>
         </div>
-        <div class="dl-tree" id="plan-tree"></div>
+        <div class="dl-tree" id="plan-tree" role="tabpanel"></div>
 
         <details class="dl-plan__notes">
           <summary>計算の前提・注意・出典</summary>
@@ -97,6 +100,7 @@
         お出かけの前には、必ず各社の公式情報を確認してください。<br>
         このページについて、交通事業者へのお問い合わせはしないでください。</p>
     </footer>
+    </div>
   </main>
 </body>
 </html>
