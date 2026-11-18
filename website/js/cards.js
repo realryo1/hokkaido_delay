@@ -31,12 +31,11 @@ function card(id, svc, body, timeText, note = "") {
     </section>`;
 }
 
-// 路線・系統1つ分の正方形のタイル。大きな印（○△×−？）と状態の言葉で見せる。名前の（）の中は小さく2行目に
+// 路線・系統1つ分の正方形のタイル。名前と、大きな印（○△×−？）と状態の言葉だけで見せる。名前の（）の中（区間など）は出さない
 //   { name, status, label, href, line }。line は上の帯の色（地下鉄のラインカラーなど。delay.css の .dl-line--*）
 const TILE_LABEL = { normal: "平常", delay: "遅れあり", suspended: "運休", offhours: "時間外", unknown: "取得できず" };
 function tile({ name, status, label, href, line }) {
-  const m = /^(.+?)（(.+)）$/.exec(name);
-  const inner = `<span class="dl-tile__name">${esc(m ? m[1] : name)}</span>${m ? `<span class="dl-tile__sub">${esc(m[2])}</span>` : ""}
+  const inner = `<span class="dl-tile__name">${esc(name.replace(/（.*$/, ""))}</span>
       <span class="dl-tile__mark" aria-hidden="true">${MARK[status] || MARK.unknown}</span>
       <span class="dl-tile__label">${esc(label || TILE_LABEL[status] || TILE_LABEL.unknown)}</span>`;
   const cls = `dl-tile is-${esc(status || "unknown")}${line ? ` dl-line--${esc(line)}` : ""}`;
@@ -46,11 +45,19 @@ const tiles = (list) => `<ul class="dl-tiles">${list.join("")}</ul>`;
 // タイルの下に並べる明細（高速道路の重要な規制の区間、中央バスの系統、地下鉄の案内）。ないときは出さない
 const details = (items) => (items.length ? `<ul class="dl-subitems">${items.join("")}</ul>` : "");
 
-// JR北海道：本日の状態だけ（明日は出さない）
+// JR北海道：本日の状態だけ（明日は出さない）。函館線・千歳線と学園都市線は「札幌近郊」の1枚にまとめ、悪い方の状態を出す
+const WORSE = { suspended: 4, delay: 3, unknown: 2, normal: 1, offhours: 0 };
+const JR_SAPPORO = ["hakochise", "gakuen"];
 function renderJr(svc) {
-  const body = tiles(
-    (svc.items || []).map((i) => tile({ name: i.name, status: i.status, label: i.status === "delay" ? "遅れ・運休" : "", href: jrUrl(i.id) }))
-  );
+  const items = svc.items || [];
+  const near = items.filter((i) => JR_SAPPORO.includes(i.id));
+  const list = items.flatMap((i) => {
+    if (!JR_SAPPORO.includes(i.id)) return [i];
+    if (i !== near[0]) return [];
+    const worst = near.reduce((a, b) => ((WORSE[b.status] ?? 2) > (WORSE[a.status] ?? 2) ? b : a));
+    return [{ ...worst, id: near[0].id, name: "札幌近郊" }];
+  });
+  const body = tiles(list.map((i) => tile({ name: i.name, status: i.status, label: i.status === "delay" ? "遅れ・運休" : "", href: jrUrl(i.id) })));
   const note = "運休・30分以上の遅れ・運転見合わせがあるかどうかだけです。深夜はサービス時間外です。詳しくは各線区のリンク先へ。";
   return card("jr", svc, body, svc.source_time, note);
 }
@@ -200,12 +207,11 @@ function renderHokto(svc) {
         .map((i) => `<a href="${esc(linkOr("hokto", i.url, OFFICIAL.hokto.url))}" target="_blank" rel="noopener">${esc(i.name)}</a> ${esc(i.label)}`)
         .join("／")}</p>`
     : "";
-  // 区間（「札幌市内中心部 ⇔ 新千歳空港」）はタイルの2行目に小さく出す
   const body =
     tiles(
       items
         .filter((i) => !HOKTO_MINOR.includes(i.id))
-        .map((i) => tile({ name: i.about ? `${i.name}（${i.about}）` : i.name, status: i.status, label: i.label, href: linkOr("hokto", i.url, OFFICIAL.hokto.url) }))
+        .map((i) => tile({ name: i.name, status: i.status, label: i.label, href: linkOr("hokto", i.url, OFFICIAL.hokto.url) }))
     ) + minorLine;
   return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", "運休の有無だけで、道路状況などによる遅れは載りません。");
 }

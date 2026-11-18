@@ -628,7 +628,7 @@ button { font: inherit; color: inherit; }
 .dl-badge--done { color: var(--st-delay); background: transparent; box-shadow: inset 0 0 0 1px var(--col-link-light); }
 
 /* 路線・系統ごとの正方形のタイル（JR・地下鉄・高速道路・バス）。横に並べ、幅に合わせて折り返す
-   上から 名前・（）の中の区間・大きな印（○△×−？）・状態の言葉。上の帯は地下鉄はラインカラー、ほかは会社の色
+   上から 名前・大きな印（○△×−？）・状態の言葉。上の帯は地下鉄はラインカラー、ほかは会社の色
    中身が入りきらないときは、正方形より縦に伸びる（同じ行のタイルは高さがそろう） */
 .dl-tiles {
   display: grid;
@@ -642,7 +642,7 @@ button { font: inherit; color: inherit; }
 .dl-tile {
   aspect-ratio: 1;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   justify-items: center;
   min-width: 0;
   padding: 6px 6px 8px;
@@ -656,15 +656,6 @@ button { font: inherit; color: inherit; }
   overflow-wrap: anywhere;
 }
 .dl-tile__name { font-size: .78rem; font-weight: 700; }
-.dl-tile__sub {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: clip;
-  font-size: .6rem;
-  opacity: .75;
-}
 .dl-tile__mark {
   align-self: center;
   display: grid;
