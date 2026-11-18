@@ -111,7 +111,7 @@
       "source_time": null,
       "groups": [
         {
-          "id": "airport", "name": "新千歳空港連絡バス", "status": "delay",
+          "id": "airport", "name": "新千歳空港連絡", "status": "delay",
           "items": [
             { "id": "686", "route": "小樽駅前系統", "direction": "小樽→新千歳空港", "time": null, "status": "suspended", "label": "運休中", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=686&ket=0" },
             { "id": "686", "route": "小樽駅前系統", "direction": "新千歳空港→小樽", "time": null, "status": "suspended", "label": "運休中", "url": "https://www.chuo-bus.co.jp/support/stop/?ope=list&rsn=686&ket=0" }

@@ -187,7 +187,7 @@ function renderChuobus(svc) {
           ${i.direction ? `（${esc(i.direction)}）` : ""}${i.time ? ` ${esc(i.time)}発` : ""}</span></li>`
     )
   );
-  const body = tiles(svc, groups.map((g) => ({ name: g.name, status: g.status, label: g.status === "normal" ? "運休情報なし" : "運休あり" }))) + details(svc, items);
+  const body = tiles(svc, groups.map((g) => ({ name: g.id === "airport" ? "新千歳空港連絡" : g.name, status: g.status, label: g.status === "normal" ? "運休情報なし" : "運休あり" }))) + details(svc, items);
   const note = "運休だけで、道路状況などによる遅れは載りません。運休の理由や詳しい便は各系統のリンク先へ。";
   return card("chuobus", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", note);
 }

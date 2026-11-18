@@ -333,7 +333,7 @@ button { font: inherit; color: inherit; }
   --band: 24px;
   --mark: 32px;
   display: grid;
-  grid-template-columns: 6px repeat(var(--n), minmax(var(--pitch), 1fr));
+  grid-template-columns: 8px repeat(var(--n), minmax(var(--pitch), 1fr));
   align-items: center;
   margin: 4px 0 18px;
   /* 中の重ね順（駅名・印・通過する線の z-index）を路線図の中で閉じる。閉じないと、スクロールしたとき上に貼り付く見出しより上に出る */
@@ -343,7 +343,7 @@ button { font: inherit; color: inherit; }
 .dl-map > .dl-track { grid-area: var(--row) / var(--col); }
 .dl-map > .dl-map__stop { grid-area: var(--row) / var(--col) / auto / var(--col-end); }
 /* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
-   線の左右に同じだけ（8px）余白を取る（列の中で線は左寄り（4〜10px）、右は縦書きの名前の場所なので、右は詰める）。
+   帯（24px）の左右に余裕を持たせて、角丸の外に帯の角がはみ出さないようにする。
    駅名が入りきらないときは右へ広げる */
 .dl-map__stop {
   position: relative;
@@ -353,9 +353,9 @@ button { font: inherit; color: inherit; }
   align-items: center;
   justify-content: center;
   width: max-content;
-  min-width: calc(100% - 6px);
+  min-width: calc(100% + 8px);
   min-height: 30px;
-  margin: 0 10px 0 -4px;
+  margin: 0 0 0 -8px;
   padding: 2px 10px;
   border: 3px solid var(--col-ink);
   border-radius: 999px;
@@ -373,7 +373,7 @@ button { font: inherit; color: inherit; }
 /* 駅の行の線：始まりは下半分、終わりは上半分、通過は駅の上に重ねる */
 .dl-map > .dl-track { align-self: stretch; }
 .dl-map > .dl-track--top { align-self: start; height: 50%; }
-.dl-map > .dl-track--bottom { align-self: end; height: 50%; }
+.dl-map > .dl-track--bottom { align-self: end; height: 50%; --dir: 0deg; }
 .dl-map > .dl-track--pass { z-index: 2; }
 .dl-map > .dl-track--more { min-height: 16px; }
 /* 上へ出して消えていく線（小樽から日本海側へのフェリー）：印と名前は下（駅の側）に寄せ、線は上へ向かって薄くする */
@@ -425,10 +425,13 @@ button { font: inherit; color: inherit; }
 }
 .dl-track:hover .dl-track__label { text-decoration: underline; }
 /* 状態：平常は実線、乱れは破線、運休は赤の破線、時間外・取得できずは灰の点線 */
-.is-delay .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), var(--line) 0 10px, transparent 10px 16px); }
-.is-suspended .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), var(--st-suspended-bg) 0 6px, transparent 6px 12px); }
-.is-offhours .dl-track__line,
-.is-unknown .dl-track__line { background: repeating-linear-gradient(var(--dir, 180deg), #bbb 0 3px, transparent 3px 7px); }
+.is-delay { --dash: var(--line); --dash-on: 10px; --dash-step: 16px; }
+.is-suspended { --dash: var(--st-suspended-bg); --dash-on: 6px; --dash-step: 12px; }
+.is-offhours,
+.is-unknown { --dash: #bbb; --dash-on: 3px; --dash-step: 7px; }
+:is(.is-delay, .is-suspended, .is-offhours, .is-unknown) .dl-track__line {
+  background: repeating-linear-gradient(var(--dir, 180deg), var(--dash) 0 var(--dash-on), transparent var(--dash-on) var(--dash-step));
+}
 /* 線の色（各社のコーポレートカラー・地下鉄のラインカラー） */
 .dl-track--jr { --line: var(--brand-jr); }
 .dl-track--airport { --line: var(--brand-airport); }
@@ -448,6 +451,13 @@ button { font: inherit; color: inherit; }
 .dl-map > .dl-track { display: grid; justify-items: start; width: auto; }
 .dl-map > .dl-track > * { grid-area: 1 / 1; }
 .dl-map > .dl-track .dl-track__line { width: var(--band); margin-left: 0; }
+/* 路線図の中の破線・点線：上下の端（駅と接する側）が透明になって宙に浮いて見えないよう、上下端6pxは必ず塗る */
+.dl-map > .dl-track:is(.is-delay, .is-suspended, .is-offhours, .is-unknown) .dl-track__line {
+  background:
+    linear-gradient(var(--dash), var(--dash)) top / 100% 6px no-repeat,
+    linear-gradient(var(--dash), var(--dash)) bottom / 100% 6px no-repeat,
+    repeating-linear-gradient(var(--dir, 180deg), var(--dash) 0 var(--dash-on), transparent var(--dash-on) var(--dash-step));
+}
 .dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: calc((var(--band) - 4px) / 2); }
 /* 印は帯より少し大きく（--mark）、帯の左右にはみ出させる。状態の言葉（バッジ）は路線図には出さない（印で見せる） */
 .dl-map > .dl-track .dl-track__mark {

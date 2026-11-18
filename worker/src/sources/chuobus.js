@@ -20,7 +20,7 @@ const STATE_RE = new RegExp(`\\s(${Object.keys(STATES).join("|")})(?:\\s|$)`);
 // 高速おたる号は「高速おたる号（円山経由）」、高速とまこまい号は「高速とまこまい号」。英語の併記「(…)」は外す
 const noEn = (s) => s.replace(/[（(][\x20-\x7e]+[）)]/g, "").replace(/\s+/g, " ").trim();
 const GROUPS = [
-  { id: "airport", name: "新千歳空港連絡バス", test: /空港連絡バス/, route: (head) => noEn(head.split(/<br\s*\/?>/i)[1] || "") },
+  { id: "airport", name: "新千歳空港連絡", test: /空港連絡バス/, route: (head) => noEn(head.split(/<br\s*\/?>/i)[1] || "") },
   { id: "otaru", name: "高速おたる号（札幌〜小樽）", test: /高速おたる号/, route: (head) => /高速おたる号(?:（[^）]*）)?/.exec(head)[0] },
   // 苫小牧西港（シルバーフェリー）へ行く便があるので載せる（plan.js でも使う）
   {
