@@ -13,10 +13,6 @@
 // 日付か「深夜便」「夕方便」で始まるのに読めない行（「月7日（水）」の書き間違い、日付や時刻のない書き方）は unread に数える。
 import { get } from "../http.js";
 import { noticeTexts, MAX_TEXT } from "../noticeTexts.js";
-import { judgeSailings } from "./ferryJudge.js";
-
-// 1日の便数（大洗発・苫小牧発の深夜便・夕方便。公式「運航ダイヤ」2026-11-19 確認）
-const PER_DAY = 4;
 
 const PAGE = "https://www.sunflower.co.jp/";
 const PORTS = { 大洗: "苫小牧", 苫小牧: "大洗" }; // 出発港 → 到着港
@@ -116,7 +112,6 @@ export function parseTop(html) {
     ({ sailings, unread } = parseBox(lines, +posted.slice(0, 4), +posted.slice(5, 7)));
     noticeTexts.set("sunflower", lines.join("\n").slice(0, MAX_TEXT));
   }
-  // 状態：欄から読んだ欠航の便で「大幅欠航」「一部欠航」などにする（ferryJudge.js）。読めなければ欄の語からの判定のまま
-  const judged = state.status !== "normal" && judgeSailings(sailings, () => PER_DAY);
-  return { source_time, ...(judged || state), posted, sailings, unread, warnings: [] };
+  // 状態は欄の語から分類したもの。欠航・遅れの便からの「大幅欠航」などの判定はページ側（website/js/ferry.js）
+  return { source_time, ...state, posted, sailings, unread, warnings: [] };
 }

@@ -1,6 +1,7 @@
 // 各社のカード（#sections の中身）。main.js が JSON を受け取るたびに renderCards で描き直す
 import { esc, hhmm, md, badge, mark } from "./util.js";
 import { OFFICIAL, officialUrl, jrUrl, linkOr, SNF_LIST } from "./official.js";
+import { judgeFerry } from "./ferry.js";
 
 // 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す。フェリーの便ごとの状況は最初は閉じる）
 // 便の一覧は新千歳空港（airport）と丘珠空港（okadama）で別々に持つ。変えるのは main.js のイベント
@@ -262,12 +263,13 @@ function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, s
 }
 const asOf = (iso) => (iso ? `${md(iso)} ${hhmm(iso)} 現在` : "");
 function ferryRow(id, svc) {
+  // 欠航・遅れの便から決めた状態（色）と言葉（js/ferry.js）。決まらなければ事業者の状態と言葉のまま
+  const judged = judgeFerry(id, svc);
   let label = "";
   let msg = "";
   let extra = "";
   if (id === "silverferry") {
-    // 状態は Worker が欠航の便から決めた「大幅欠航」「一部欠航」など（読めなければトップの文言）
-    label = svc.label || svc.message;
+    label = svc.message;
     if (svc.notice_url) msg = `<a href="${esc(linkOr("silverferry", svc.notice_url, OFFICIAL.silverferry.url))}" target="_blank" rel="noopener">お知らせ</a>`;
     // 欠航・遅延のお知らせから読んだ便ごとの状況（日付・出発港・時刻・船名）。平常時はない
     const list = svc.sailings || [];
@@ -301,7 +303,7 @@ function ferryRow(id, svc) {
       });
     }
   } else {
-    label = svc.label || (svc.notices?.length ? `運航状況のお知らせ ${svc.notices.length}件` : "運航状況のお知らせなし");
+    label = svc.notices?.length ? `運航状況のお知らせ ${svc.notices.length}件` : "運航状況のお知らせなし";
     msg = (svc.notices || [])
       .map((n) => `<a href="${esc(linkOr("snf", n.url, SNF_LIST))}" target="_blank" rel="noopener">お知らせ（${esc(md(n.date))}）</a>`)
       .join("　");
@@ -324,7 +326,7 @@ function ferryRow(id, svc) {
   // 取得に失敗しているときは、社名の横に「情報途絶（最終取得 …）」、状態は「情報途絶」にして、前回のお知らせ・便は出さない
   return `<li class="dl-row">
       <span class="dl-row__name dl-line dl-line--${esc(id)}"><a href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)}</a>${staleTag(svc)}</span>
-      ${svc.ok ? badge(svc.status, label) : badge("unknown", STALE)}
+      ${svc.ok ? badge(judged?.status || svc.status, judged?.text || label) : badge("unknown", STALE)}
       ${svc.ok && msg ? `<span class="dl-row__msg">${msg}</span>` : ""}
       ${svc.ok ? extra : ""}
     </li>`;

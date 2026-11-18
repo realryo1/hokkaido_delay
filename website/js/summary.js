@@ -1,14 +1,18 @@
 // 行き先ごとのまとめ（#summary の中身）。各カードのデータから、行き先ごとに「使える手段があるか」をまとめ、縦の路線図に描く
 import { esc, badge, mark } from "./util.js";
 import { ROUTEMAP } from "./routemap.js";
+import { judgeFerry } from "./ferry.js";
 
 // 手段どうしは代わりになるので、すべて平常／一部に乱れ（平常の手段もある）／すべてに乱れ の3段階にする。集計はページ側だけで行う（Worker は変えていない）
 const worst = (list) =>
   ["suspended", "delay", "normal"].find((st) => list.includes(st)) || (list.includes("offhours") ? "offhours" : "unknown");
-// 手段1つ：id はカードへのリンク先、pick は事業者のデータ → 状態、label は状態 → 表示（なければ共通の表記）、
+// 手段1つ：id はカードへのリンク先、pick は事業者のデータ → 状態、label は状態 → 表示（関数なら (事業者のデータ, 状態) → 表示。なければ共通の表記）、
 // line は路線図の線の色（delay.css の .dl-track--{line}。なければ事業者の色）。路線図での置き方は routemap.js に名前で書く
 const means = (name, id, svcId, pick, label = {}, line = svcId) => ({ name, id, svcId, pick, label, line });
 const ROAD = { suspended: "通行止あり", delay: "規制あり" };
+// フェリー：欠航・遅れの便から決めた状態（色）と言葉（js/ferry.js）。決まらなければ事業者の状態と、状態ごとの言葉
+const ferry = (name, svcId, byStatus) =>
+  means(name, "ferry", svcId, (s) => judgeFerry(svcId, s)?.status || s.status, (s, st) => judgeFerry(svcId, s)?.text || byStatus[st]);
 const JR = { delay: "遅れ・運休" }; // JR北海道の情報は遅れと運休の区別がない
 export const SUMMARY = [
   {
@@ -71,10 +75,10 @@ export const SUMMARY = [
         worst((s.items || []).filter((i) => ["express", "shinkansen"].includes(i.id)).map((i) => i.status)),
         JR
       ),
-      means("シルバーフェリー", "ferry", "silverferry", (s) => s.status, { delay: "欠航・遅延あり" }),
-      means("さんふらわあ", "ferry", "sunflower", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
+      ferry("シルバーフェリー", "silverferry", { delay: "欠航・遅延あり" }),
+      ferry("さんふらわあ", "sunflower", { delay: "遅れあり", suspended: "欠航あり" }),
       // 新日本海フェリーは小樽港（と苫小牧東港）から日本海側へ出るので、路線図（routemap.js）では小樽から上へ出して消えていく線にする
-      means("新日本海フェリー", "ferry", "snf", (s) => s.status, { delay: "お知らせあり" }),
+      ferry("新日本海フェリー", "snf", { delay: "お知らせあり" }),
       means("太平洋フェリー", "ferry", "taiheiyo", (s) => s.status, { delay: "遅れあり", suspended: "欠航あり" }),
     ],
   },
@@ -89,7 +93,8 @@ function judge(dest, services) {
       const svc = services[m.svcId];
       // 取得に失敗している事業者は、前回のデータで判定せず「取得できず」にする
       const st = (svc.ok && m.pick(svc)) || "unknown";
-      return { ...m, st, text: m.label[st] || CHIP_LABEL[st] };
+      const text = st === "unknown" ? null : typeof m.label === "function" ? m.label(svc, st) : m.label[st];
+      return { ...m, st, text: text || CHIP_LABEL[st] };
     });
   // 時間外・取得できずは判定に使わない
   const known = chips.map((c) => c.st).filter((st) => ["normal", "delay", "suspended"].includes(st));

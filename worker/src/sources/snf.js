@@ -14,16 +14,6 @@
 // ページでは「お知らせで確認」と出す。
 import { get } from "../http.js";
 import { noticeTexts, MAX_TEXT } from "../noticeTexts.js";
-import { judgeSailings, weekday } from "./ferryJudge.js";
-
-// 1日の便数（各港の出港を1便と数える。曜日 0 = 日曜）。公式「時刻表・運航スケジュール」（2026-11-19 確認）から数えた
-//   毎日：舞鶴23:50・小樽23:30・敦賀23:55・苫小牧東23:30。小樽16:45 は月〜土、新潟12:00 は火〜日
-//   通常ダイヤの日本海側（敦賀・新潟・秋田経由）：敦賀18:30 火木日、新潟22:30 月水金、秋田06:15 火木土、苫小牧東19:30 火木土、秋田08:35 水金日、新潟17:30 水金日
-//   2027-01-12 出港便からのドック期間ダイヤ：敦賀09:30 月、新潟22:30 月〜土、秋田06:15 火〜日、苫小牧東19:30 月〜土、秋田08:35 火〜日、新潟16:30 日（終わりの日は時刻表に書かれていない）
-// 運航日が変則になることがある（配船表）ので目安。時刻表が変わったら直す
-const SNF_PER_DAY = [8, 6, 9, 9, 9, 9, 8];
-const SNF_PER_DAY_DOCK = [8, 8, 10, 10, 10, 10, 10];
-const snfPerDay = (d) => (d >= "2027-01-12" ? SNF_PER_DAY_DOCK : SNF_PER_DAY)[weekday(d)];
 
 const PAGE = "https://www.snf.jp/";
 const LIST = "https://www.snf.jp/info-list/?info_group=operation";
@@ -152,9 +142,6 @@ export async function fetchSnf() {
       n.sailings = null;
     }
   }
-  // 状態：お知らせから読んだ欠航の便で「大幅欠航」「一部欠航」などにする（ferryJudge.js）。読めなければ今までどおり、お知らせがあれば delay
-  const judged = judgeSailings(notices.flatMap((n) => n.sailings || []), snfPerDay);
-  const status = judged?.status || (notices.length ? "delay" : "normal");
-  const label = judged?.label || (notices.length ? `運航状況のお知らせ ${notices.length}件` : "運航状況のお知らせなし");
-  return { source_time: null, status, label, list_url: LIST, notices, warnings };
+  // 状態は事業者の情報のまま（お知らせがあれば delay）。欠航・遅れの便からの「大幅欠航」などの判定はページ側（website/js/ferry.js）
+  return { source_time: null, status: notices.length ? "delay" : "normal", list_url: LIST, notices, warnings };
 }
