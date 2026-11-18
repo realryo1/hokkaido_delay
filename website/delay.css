@@ -486,7 +486,7 @@ button { font: inherit; color: inherit; }
 .dl-plan__origin[aria-selected="true"] { border-color: transparent; background: var(--brand-gradient); color: #fff; }
 /* 苫小牧は西港（シルバーフェリー）と東港（新日本海フェリーの敦賀・秋田・新潟航路）があり、取り違えやすい */
 .dl-plan__warn { color: var(--st-delay); font-weight: 700; }
-/* 札幌の枝から小樽の木へ移るボタン（カード下の情報元ボタン .dl-source と同じ形） */
+/* 札幌の枝から小樽の木へ移るボタン */
 .dl-plan__jump {
   display: block;
   margin: 8px 0 0;
@@ -627,7 +627,70 @@ button { font: inherit; color: inherit; }
 /* 出発・到着済みで遅れた便：遅れの色の枠線だけにして、これから飛ぶ便より控えめに */
 .dl-badge--done { color: var(--st-delay); background: transparent; box-shadow: inset 0 0 0 1px var(--col-link-light); }
 
-/* 線区 × 本日・明日 */
+/* 路線・系統ごとの正方形のタイル（JR・地下鉄・高速道路・バス）。横に並べ、幅に合わせて折り返す
+   上から 名前・（）の中の区間・大きな印（○△×−？）・状態の言葉。上の帯は地下鉄はラインカラー、ほかは会社の色
+   中身が入りきらないときは、正方形より縦に伸びる（同じ行のタイルは高さがそろう） */
+.dl-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dl-tiles > li { display: grid; }
+.dl-tile {
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  justify-items: center;
+  min-width: 0;
+  padding: 6px 6px 8px;
+  border-top: 4px solid var(--line, var(--brand, var(--col-secondary-light)));
+  border-radius: 12px;
+  background: var(--col-paper-muted);
+  color: var(--col-ink);
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.dl-tile__name { font-size: .78rem; font-weight: 700; }
+.dl-tile__sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: clip;
+  font-size: .6rem;
+  opacity: .75;
+}
+.dl-tile__mark {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  aspect-ratio: 1;
+  margin: 4px 0;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--st-unknown);
+  background: var(--st-unknown-bg);
+}
+.dl-tile__label { font-size: .68rem; font-weight: 700; }
+.dl-tile.is-normal .dl-tile__mark { color: var(--st-normal); background: var(--st-normal-bg); }
+.dl-tile.is-delay .dl-tile__mark { color: var(--st-delay); background: var(--st-delay-bg); }
+.dl-tile.is-delay .dl-tile__label { color: var(--st-delay); }
+.dl-tile.is-suspended .dl-tile__mark { color: var(--st-suspended); background: var(--st-suspended-bg); }
+.dl-tile.is-suspended .dl-tile__label { color: var(--st-suspended-bg); }
+a.dl-tile:hover .dl-tile__name { text-decoration: underline; }
+/* タイルの下の明細（高速道路の規制の区間、中央バスの系統、地下鉄の案内） */
+.dl-tiles + .dl-subitems { margin-top: 8px; }
+.dl-subitems b { margin-right: 4px; }
+
+/* 便の一覧（空港）の表 */
 .dl-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .dl-table th,
 .dl-table td { padding: 8px 4px; border-bottom: 1px solid var(--col-paper-muted); text-align: left; }
@@ -784,21 +847,11 @@ tr.dl-air--FDA > td.dl-airname {
   text-decoration: none;
 }
 
-/* カード下の情報元ボタン */
-.dl-source {
-  display: block;
-  width: fit-content;
-  margin: 12px 0 0 auto;
-  padding: 5px 14px;
-  border: 1px solid var(--brand, var(--col-secondary-light));
-  border-radius: 999px;
-  color: var(--col-ink);
-  font-size: .75rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-.dl-source::after { content: " ↗"; }
-.dl-source:hover { background: var(--col-secondary-lighter); }
+/* 各カードの備考をまとめた最後の枠（カードの中には備考を出さない） */
+.dl-notes dl { margin: 0; font-size: .72rem; }
+.dl-notes dt { margin: 8px 0 0; font-weight: 700; }
+.dl-notes dt:first-child { margin-top: 0; }
+.dl-notes dd { margin: 0; opacity: .8; }
 
 /* 未対応の交通機関のリンク */
 .dl-links { margin: 8px 0 0; padding-left: 1.2em; font-size: .85rem; }

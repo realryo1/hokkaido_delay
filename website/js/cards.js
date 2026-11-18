@@ -1,5 +1,5 @@
 // 各社のカード（#sections の中身）。main.js が JSON を受け取るたびに renderCards で描き直す
-import { esc, hhmm, md, badge } from "./util.js";
+import { esc, hhmm, md, badge, MARK } from "./util.js";
 import { OFFICIAL, officialUrl, jrUrl, linkOr, SNF_LIST } from "./official.js";
 
 // 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す）
@@ -16,50 +16,52 @@ function staleNote(id, svc) {
     </div>`;
 }
 
+// カードの備考。カードの中には出さず、renderCards が最後の「備考」の枠にまとめて出す（縦の長さを減らし、状態を先に見せるため）
+let notes = [];
+
 // id（jr / subway / airport など）でカードにコーポレートカラーを付ける（delay.css の .dl-card--{id}）
-function card(id, svc, body, timeText) {
+// 見出しが公式の運行情報へのリンクを兼ねる。note は備考（最後の枠に回す）
+function card(id, svc, body, timeText, note = "") {
   const time = timeText ? `<span class="dl-card__time">${esc(timeText)}</span>` : "";
-  // 情報元へのボタン。取得失敗時は staleNote に目立つ公式ボタンがあるので出さない
-  const source = svc.ok
-    ? `<a class="dl-source" href="${esc(officialUrl(id))}" target="_blank" rel="noopener">情報元：${esc(svc.name)}</a>`
-    : "";
+  if (note && (svc.ok || svc.last_success_at)) notes.push({ name: svc.name, note });
   return `<section class="dl-card dl-card--${esc(id)}" id="dl-${esc(id)}">
       <h2 class="dl-card__title"><a href="${esc(officialUrl(id))}" target="_blank" rel="noopener">${esc(svc.name)}</a>${time}</h2>
       ${staleNote(id, svc)}
       ${svc.ok || svc.last_success_at ? body : ""}
-      ${source}
     </section>`;
 }
 
+// 路線・系統1つ分の正方形のタイル。大きな印（○△×−？）と状態の言葉で見せる。名前の（）の中は小さく2行目に
+//   { name, status, label, href, line }。line は上の帯の色（地下鉄のラインカラーなど。delay.css の .dl-line--*）
+const TILE_LABEL = { normal: "平常", delay: "遅れあり", suspended: "運休", offhours: "時間外", unknown: "取得できず" };
+function tile({ name, status, label, href, line }) {
+  const m = /^(.+?)（(.+)）$/.exec(name);
+  const inner = `<span class="dl-tile__name">${esc(m ? m[1] : name)}</span>${m ? `<span class="dl-tile__sub">${esc(m[2])}</span>` : ""}
+      <span class="dl-tile__mark" aria-hidden="true">${MARK[status] || MARK.unknown}</span>
+      <span class="dl-tile__label">${esc(label || TILE_LABEL[status] || TILE_LABEL.unknown)}</span>`;
+  const cls = `dl-tile is-${esc(status || "unknown")}${line ? ` dl-line--${esc(line)}` : ""}`;
+  return `<li>${href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="${cls}">${inner}</div>`}</li>`;
+}
+const tiles = (list) => `<ul class="dl-tiles">${list.join("")}</ul>`;
+// タイルの下に並べる明細（高速道路の重要な規制の区間、中央バスの系統、地下鉄の案内）。ないときは出さない
+const details = (items) => (items.length ? `<ul class="dl-subitems">${items.join("")}</ul>` : "");
+
+// JR北海道：本日の状態だけ（明日は出さない）
 function renderJr(svc) {
-  const rows = (svc.items || [])
-    .map(
-      (i) => `<tr>
-          <th scope="row"><a href="${esc(jrUrl(i.id))}" target="_blank" rel="noopener">${esc(i.name)}</a></th>
-          <td>${badge(i.status, i.status === "delay" ? "遅れ・運休" : "")}</td>
-          <td>${badge(i.tomorrow, i.tomorrow === "delay" ? "運休など" : "")}</td>
-        </tr>`
-    )
-    .join("");
-  const body = `<table class="dl-table">
-      <thead><tr><th></th><th>本日</th><th>明日</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p class="dl-card__note">JR北海道の情報は「運休・30分以上の遅れ・運転見合わせがあるかどうか」のみです。深夜はサービス時間外になります。詳しくは各線区のリンク先へ。</p>`;
-  return card("jr", svc, body, svc.source_time);
+  const body = tiles(
+    (svc.items || []).map((i) => tile({ name: i.name, status: i.status, label: i.status === "delay" ? "遅れ・運休" : "", href: jrUrl(i.id) }))
+  );
+  const note = "運休・30分以上の遅れ・運転見合わせがあるかどうかだけです。深夜はサービス時間外です。詳しくは各線区のリンク先へ。";
+  return card("jr", svc, body, svc.source_time, note);
 }
 
+// 地下鉄：路線ごとのタイル。平常でないときだけ、札幌市の案内の文言を下に出す
 function renderSubway(svc) {
-  const rows = (svc.items || [])
-    .map(
-      (i) => `<li class="dl-row">
-          <span class="dl-row__name dl-line dl-line--${esc(i.id)}">${esc(i.name)}</span>
-          ${badge(i.status)}
-          ${i.message ? `<span class="dl-row__msg">${esc(i.message)}</span>` : ""}
-        </li>`
-    )
-    .join("");
-  return card("subway", svc, `<ul class="dl-rows">${rows}</ul>`, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
+  const items = svc.items || [];
+  const body =
+    tiles(items.map((i) => tile({ name: i.name, status: i.status, line: i.id }))) +
+    details(items.filter((i) => i.status !== "normal" && i.message).map((i) => `<li><b>${esc(i.name)}</b><span>${esc(i.message)}</span></li>`));
+  return card("subway", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
 }
 
 const KIND = { cancelled: "欠航", delayed: "遅れ", diverted: "引き返し等" };
@@ -147,58 +149,44 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
       ? "航空会社ごとの集計です。備考が「目的地天候不良」の便は、引き返しなどの可能性がある便として数えます。丘珠空港は道内各地と秋田・新潟などを結び、新千歳空港が使えないときの代わりになることがあります。"
       : "運航会社ごとの集計です（コードシェア便は運航会社側に数えます）。";
   const empty = (svc.groups || []).length ? "" : `<p class="dl-card__note">現在、表示できるフライト情報がありません。</p>`;
-  const body = `<ul class="dl-rows">${groups}</ul>${empty}${list}
-      <p class="dl-card__note">${note}</p>`;
-  return card(id, svc, body, svc.ok ? (svc.source_time ? `${hhmm(svc.source_time)} 時点` : `${hhmm(svc.fetched_at)} 取得`) : "");
+  const body = `<ul class="dl-rows">${groups}</ul>${empty}${list}`;
+  return card(id, svc, body, svc.ok ? (svc.source_time ? `${hhmm(svc.source_time)} 時点` : `${hhmm(svc.fetched_at)} 取得`) : "", note);
 }
 
 // 高速道路：路線ごとの状態と、重要な規制（通行止・チェーン規制・事故など）の区間。車線規制・除雪作業などは件数だけ出す
 const ROAD_LABEL = { suspended: "通行止あり", delay: "規制あり", normal: "重要な規制なし" };
 function renderExpressway(svc) {
-  const rows = (svc.roads || [])
-    .map((r) => {
-      const major = (r.items || []).filter((x) => x.major);
-      const minor = (r.items || []).length - major.length;
-      const items = major
-        .map(
-          (x) => `<li>${badge(x.kind === "closed" ? "suspended" : "delay", x.label)}
-              <span>${esc(x.section)}${x.direction ? `（${esc(x.direction)}）` : ""}${x.reason ? `　原因：${esc(x.reason)}` : ""}</span></li>`
-        )
-        .join("");
-      return `<li class="dl-row">
-          <span class="dl-row__name">${esc(r.name)}</span>
-          ${badge(r.status, ROAD_LABEL[r.status])}
-          ${items ? `<ul class="dl-subitems">${items}</ul>` : ""}
-          ${minor ? `<span class="dl-row__msg">そのほかの規制（車線規制・除雪作業など） ${minor}件</span>` : ""}
-        </li>`;
-    })
-    .join("");
-  const body = `<ul class="dl-rows">${rows}</ul>
-      <p class="dl-card__note">表示まで10〜15分ほど遅れることがあります。通行止・チェーン規制は急に変わるので、出発前に必ず公式の交通情報を確認してください。</p>`;
-  return card("expressway", svc, body, svc.source_time ? `${hhmm(svc.source_time)} 時点` : "");
+  const roads = svc.roads || [];
+  const items = roads.flatMap((r) => {
+    const name = r.name.replace(/（.*$/, "");
+    const major = (r.items || []).filter((x) => x.major);
+    const minor = (r.items || []).length - major.length;
+    return [
+      ...major.map(
+        (x) => `<li>${badge(x.kind === "closed" ? "suspended" : "delay", x.label)}
+            <span><b>${esc(name)}</b> ${esc(x.section)}${x.direction ? `（${esc(x.direction)}）` : ""}${x.reason ? `　原因：${esc(x.reason)}` : ""}</span></li>`
+      ),
+      ...(minor ? [`<li><span><b>${esc(name)}</b> そのほかの規制（車線規制・除雪作業など） ${minor}件</span></li>`] : []),
+    ];
+  });
+  const body = tiles(roads.map((r) => tile({ name: r.name, status: r.status, label: ROAD_LABEL[r.status] }))) + details(items);
+  const note = "表示まで10〜15分ほど遅れることがあります。通行止・チェーン規制は急に変わるので、出発前に必ず公式の交通情報を確認してください。";
+  return card("expressway", svc, body, svc.source_time ? `${hhmm(svc.source_time)} 時点` : "", note);
 }
 
 // 北海道中央バス：運休のある系統・便だけが載る（RSS）。遅れの情報はない
 function renderChuobus(svc) {
-  const rows = (svc.groups || [])
-    .map((g) => {
-      const items = (g.items || [])
-        .map(
-          (i) => `<li>${badge(i.status, i.label)}
-              <span><a href="${esc(linkOr("chuobus", i.url, OFFICIAL.chuobus.url))}" target="_blank" rel="noopener">${esc(i.route || g.name)}</a>
-              ${i.direction ? `（${esc(i.direction)}）` : ""}${i.time ? ` ${esc(i.time)}発` : ""}</span></li>`
-        )
-        .join("");
-      return `<li class="dl-row">
-          <span class="dl-row__name">${esc(g.name)}</span>
-          ${badge(g.status, g.status === "normal" ? "運休情報なし" : "運休あり")}
-          ${items ? `<ul class="dl-subitems">${items}</ul>` : ""}
-        </li>`;
-    })
-    .join("");
-  const body = `<ul class="dl-rows">${rows}</ul>
-      <p class="dl-card__note">中央バスの情報は運休のみで、道路状況などによる遅れは載りません。運休の理由や詳しい便は各系統のリンク先へ。</p>`;
-  return card("chuobus", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
+  const groups = svc.groups || [];
+  const items = groups.flatMap((g) =>
+    (g.items || []).map(
+      (i) => `<li>${badge(i.status, i.label)}
+          <span><a href="${esc(linkOr("chuobus", i.url, OFFICIAL.chuobus.url))}" target="_blank" rel="noopener">${esc(i.route || g.name)}</a>
+          ${i.direction ? `（${esc(i.direction)}）` : ""}${i.time ? ` ${esc(i.time)}発` : ""}</span></li>`
+    )
+  );
+  const body = tiles(groups.map((g) => tile({ name: g.name, status: g.status, label: g.status === "normal" ? "運休情報なし" : "運休あり" }))) + details(items);
+  const note = "運休だけで、道路状況などによる遅れは載りません。運休の理由や詳しい便は各系統のリンク先へ。";
+  return card("chuobus", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", note);
 }
 
 // 北都交通：空港連絡バスの系統ごとの状態（平常運行・一部区間運休・全便運休）。文言は北都交通の表記のまま
@@ -212,19 +200,14 @@ function renderHokto(svc) {
         .map((i) => `<a href="${esc(linkOr("hokto", i.url, OFFICIAL.hokto.url))}" target="_blank" rel="noopener">${esc(i.name)}</a> ${esc(i.label)}`)
         .join("／")}</p>`
     : "";
-  const rows = items
-    .filter((i) => !HOKTO_MINOR.includes(i.id))
-    .map(
-      (i) => `<li class="dl-row">
-          <span class="dl-row__name"><a href="${esc(linkOr("hokto", i.url, OFFICIAL.hokto.url))}" target="_blank" rel="noopener">${esc(i.name)}</a></span>
-          ${badge(i.status, i.label)}
-          ${i.about ? `<span class="dl-row__msg">${esc(i.about)}</span>` : ""}
-        </li>`
-    )
-    .join("");
-  const body = `<ul class="dl-rows">${rows}</ul>${minorLine}
-      <p class="dl-card__note">北都交通の情報は運休の有無のみで、道路状況などによる遅れは載りません。</p>`;
-  return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "");
+  // 区間（「札幌市内中心部 ⇔ 新千歳空港」）はタイルの2行目に小さく出す
+  const body =
+    tiles(
+      items
+        .filter((i) => !HOKTO_MINOR.includes(i.id))
+        .map((i) => tile({ name: i.about ? `${i.name}（${i.about}）` : i.name, status: i.status, label: i.label, href: linkOr("hokto", i.url, OFFICIAL.hokto.url) }))
+    ) + minorLine;
+  return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", "運休の有無だけで、道路状況などによる遅れは載りません。");
 }
 
 // フェリー：4社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に注意と公式リンクを出す
@@ -346,12 +329,24 @@ function ferryRow(id, svc) {
 function renderFerry(services) {
   const rows = FERRIES.filter((id) => services[id]).map((id) => ferryRow(id, services[id]));
   if (!rows.length) return "";
+  notes.push({
+    name: "フェリー",
+    note: "各社のトップページの運航情報から状態だけを表示しています（シルバーフェリー・さんふらわあ・新日本海フェリーは、お知らせが出ているときだけ便ごとの状況を読み取ります）。「Haiku5.5による補足」は、お知らせを AI（Claude Haiku 5.5）で読み取った要約・補足・臨時便などで、誤りがあることがあります。詳しい案内は各社のリンク先へ。",
+  });
   return `<section class="dl-card" id="dl-ferry">
       <h2 class="dl-card__title">フェリー（北海道航路）<span class="dl-card__time">${esc(hhmm(services[FERRIES.find((id) => services[id])].fetched_at))} 取得</span></h2>
       <ul class="dl-rows">${rows.join("")}</ul>
-      <p class="dl-card__note">各社のトップページの運航情報から状態だけを表示しています（シルバーフェリー・さんふらわあ・新日本海フェリーは、お知らせが出ているときだけ便ごとの状況を読み取ります）。「Haiku5.5による補足」は、お知らせを AI（Claude Haiku 5.5）で読み取った要約・補足・臨時便などで、誤りがあることがあります。詳しい案内は各社のリンク先へ。</p>
     </section>`;
 }
+
+// 各カードの備考をまとめた最後の枠
+const renderNotes = () =>
+  notes.length
+    ? `<section class="dl-card dl-notes" id="dl-notes">
+      <h2 class="dl-card__title">備考</h2>
+      <dl>${notes.map((n) => `<dt>${esc(n.name)}</dt><dd>${esc(n.note)}</dd>`).join("")}</dl>
+    </section>`
+    : "";
 
 const RENDER = {
   jr: renderJr,
@@ -363,12 +358,16 @@ const RENDER = {
   hokto: renderHokto,
 };
 
-// 各社のカードを決まった順に並べ、最後にフェリーの1枚
-export const renderCards = (services) =>
-  Object.entries(RENDER)
-    .filter(([id]) => services[id])
-    .map(([id, fn]) => fn(services[id]))
-    .join("") + renderFerry(services);
+// 各社のカードを決まった順に並べ、フェリーの1枚、最後に備考の枠
+export function renderCards(services) {
+  notes = [];
+  const html =
+    Object.entries(RENDER)
+      .filter(([id]) => services[id])
+      .map(([id, fn]) => fn(services[id]))
+      .join("") + renderFerry(services);
+  return html + renderNotes();
+}
 
 // Worker に一度もつながらなかったとき（前回の内容もない）に出す公式リンク
 export const officialLinks = () =>

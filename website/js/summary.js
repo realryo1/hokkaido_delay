@@ -1,5 +1,5 @@
 // 行き先ごとのまとめ（#summary の中身）。各カードのデータから、行き先ごとに「使える手段があるか」をまとめ、縦の路線図に描く
-import { esc, badge } from "./util.js";
+import { esc, badge, MARK } from "./util.js";
 import { ROUTEMAP } from "./routemap.js";
 
 // 手段どうしは代わりになるので、すべて平常／一部に乱れ（平常の手段もある）／すべてに乱れ の3段階にする。集計はページ側だけで行う（Worker は変えていない）
@@ -80,8 +80,6 @@ export const SUMMARY = [
   },
 ];
 const CHIP_LABEL = { normal: "平常", delay: "乱れあり", suspended: "運休あり", offhours: "時間外", unknown: "取得できず" };
-// 路線図で線の上に付ける印
-const MARK = { normal: "○", delay: "△", suspended: "×", offhours: "−", unknown: "？" };
 
 // 行き先1つ分：手段ごとの状態と、行き先全体の判定
 function judge(dest, services) {

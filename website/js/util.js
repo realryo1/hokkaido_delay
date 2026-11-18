@@ -17,6 +17,8 @@ export const LABEL = {
   unknown: "不明",
   offhours: "サービス時間外",
 };
+// 状態の印（路線図の線の上と、カードのタイル）。読み上げでは横の状態の言葉を読むので、印は飾りとして扱う
+export const MARK = { normal: "○", delay: "△", suspended: "×", offhours: "−", unknown: "？" };
 // 状態のバッジ（delay.css の .dl-badge--{status}）。label がなければ状態ごとの決まった表記
 export const badge = (status, label) =>
   `<span class="dl-badge dl-badge--${esc(status)}">${esc(label || LABEL[status] || LABEL.unknown)}</span>`;
