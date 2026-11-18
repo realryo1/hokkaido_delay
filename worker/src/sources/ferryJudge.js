@@ -1,7 +1,7 @@
 // フェリーの状態を、お知らせから正規表現で読んだ便から決める（シルバーフェリー・さんふらわあ・新日本海フェリー）
 // 数えるのは今日と明日（日本時間）に出る便。数えるのは label が「欠航」の便だけ（定期検査などの「運休」と、LLM が足した便は数えない）
 //   どちらかの日で、欠航がその日の便数の半分以上 → 大幅欠航（suspended）
-//   欠航が1便以上 → 一部欠航（delay）
+//   欠航が1便以上 → 一部欠航（suspended。欠航は大幅でも一部でも赤にする。2026-11-19 ユーザーの希望）
 //   遅れの便がある → 遅れあり（delay）
 //   先の日にだけ欠航がある → 「2/15〜欠航あり」（delay）
 //   どれでもない → null（呼んだ側の今までの判定を使う）
@@ -23,7 +23,7 @@ export function judgeSailings(sailings, perDay) {
   const near = list.filter((s) => s.date === today || s.date === tomorrow);
   const cancelled = (d) => near.filter((s) => s.date === d && s.label === "欠航").length;
   if ([today, tomorrow].some((d) => cancelled(d) > 0 && cancelled(d) * 2 >= perDay(d))) return { status: "suspended", label: "大幅欠航" };
-  if (cancelled(today) + cancelled(tomorrow) > 0) return { status: "delay", label: "一部欠航" };
+  if (cancelled(today) + cancelled(tomorrow) > 0) return { status: "suspended", label: "一部欠航" };
   if (near.some((s) => s.status === "delay")) return { status: "delay", label: "遅れあり" };
   const later = list.filter((s) => s.date > tomorrow && s.label === "欠航").map((s) => s.date).sort();
   if (later.length) return { status: "delay", label: `${md(later[0])}〜欠航あり` };
