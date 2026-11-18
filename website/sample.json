@@ -150,6 +150,7 @@
       "fail_count": 0,
       "source_time": "2027-02-06T09:30:00+09:00",
       "status": "delay",
+      "label": "一部欠航",
       "message": "欠航または遅延便があります",
       "notice_url": "https://www.silverferry.jp/",
       "posted": "2027-02-06",
@@ -176,8 +177,8 @@
       "last_success_at": "2027-02-06T10:30:00+09:00",
       "fail_count": 0,
       "source_time": "2027-02-06T09:00:00+09:00",
-      "status": "suspended",
-      "label": "欠航あり",
+      "status": "delay",
+      "label": "一部欠航",
       "posted": "2027-02-06",
       "unread": 0,
       "llm": {
@@ -206,6 +207,7 @@
       "fail_count": 2,
       "source_time": null,
       "status": "delay",
+      "label": "一部欠航",
       "list_url": "https://www.snf.jp/info-list/?info_group=operation",
       "notices": [
         {

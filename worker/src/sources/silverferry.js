@@ -11,6 +11,10 @@
 // 平常時は便ごとの情報がない（定期検査の運休や代船の期間もトップは「通常運航しています」のまま）ので、便ごとには分けない。
 import { get } from "../http.js";
 import { noticeTexts, MAX_TEXT } from "../noticeTexts.js";
+import { judgeSailings } from "./ferryJudge.js";
+
+// 1日の便数（八戸発4・苫小牧発4。公式「航路・時刻」）。定期検査で「運休」の便はその日の便数から除く
+const PER_DAY = 8;
 
 const PAGE = "https://www.silverferry.jp/";
 const CLASSES = { normal: "normal", delay: "delay" };
@@ -122,5 +126,17 @@ export async function fetchSilverferry() {
       sailings = null;
     }
   }
-  return { source_time, status, message: message || null, notice_url, posted, sailings, unread, warnings };
+  // 状態：お知らせから読んだ欠航の便で「大幅欠航」「一部欠航」などにする（ferryJudge.js）。読めなければトップの文言のまま
+  const judged = status !== "normal" && judgeSailings(sailings, (d) => PER_DAY - (sailings || []).filter((s) => s.date === d && s.label === "運休").length);
+  return {
+    source_time,
+    status: judged?.status || status,
+    label: judged?.label || message || null,
+    message: message || null,
+    notice_url,
+    posted,
+    sailings,
+    unread,
+    warnings,
+  };
 }

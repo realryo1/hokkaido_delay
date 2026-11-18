@@ -266,7 +266,8 @@ function ferryRow(id, svc) {
   let msg = "";
   let extra = "";
   if (id === "silverferry") {
-    label = svc.message;
+    // 状態は Worker が欠航の便から決めた「大幅欠航」「一部欠航」など（読めなければトップの文言）
+    label = svc.label || svc.message;
     if (svc.notice_url) msg = `<a href="${esc(linkOr("silverferry", svc.notice_url, OFFICIAL.silverferry.url))}" target="_blank" rel="noopener">お知らせ</a>`;
     // 欠航・遅延のお知らせから読んだ便ごとの状況（日付・出発港・時刻・船名）。平常時はない
     const list = svc.sailings || [];
@@ -300,7 +301,7 @@ function ferryRow(id, svc) {
       });
     }
   } else {
-    label = svc.notices?.length ? `運航状況のお知らせ ${svc.notices.length}件` : "運航状況のお知らせなし";
+    label = svc.label || (svc.notices?.length ? `運航状況のお知らせ ${svc.notices.length}件` : "運航状況のお知らせなし");
     msg = (svc.notices || [])
       .map((n) => `<a href="${esc(linkOr("snf", n.url, SNF_LIST))}" target="_blank" rel="noopener">お知らせ（${esc(md(n.date))}）</a>`)
       .join("　");
