@@ -457,9 +457,13 @@ button { font: inherit; color: inherit; }
   left: auto;
   translate: none;
   align-self: start;
+  z-index: 2;
   margin: 4px 0 0 calc((var(--band) - 18px) / 2);
 }
+/* 上へ出す線は mask-image で薄くしていて、それだけで文字より上に描かれてしまうので、名前の帯を線より上に置く */
 .dl-map > .dl-track .dl-track__label {
+  position: relative;
+  z-index: 1;
   align-self: start;
   justify-content: flex-start;
   width: var(--band);
@@ -469,7 +473,7 @@ button { font: inherit; color: inherit; }
   color: #fff;
 }
 .dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - 18px) / 2); }
-.dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 28px; }
+.dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 32px; }
 .dl-track--nanboku { --line: var(--line-nanboku); }
 .dl-track--tozai { --line: var(--line-tozai); }
 .dl-track--toho { --line: var(--line-toho); }
