@@ -129,10 +129,13 @@ export async function fetchSnf() {
 
   // お知らせの本文（自社サイトのものだけ）。取れなくてもトップの状態は出す（sailings: null は「便ごとの状況は読めていない」）
   for (const k of noticeTexts.keys()) if (k.startsWith("snf ")) noticeTexts.delete(k);
-  for (const n of notices.slice(0, MAX_NOTICES)) {
+  // MAX_NOTICES を超えた分も sailings: null（読めていない）にして、画面側の未読判定に掛かるようにする
+  for (const n of notices) {
     n.time = null;
     n.sailings = null;
     n.unread = 0;
+  }
+  for (const n of notices.slice(0, MAX_NOTICES)) {
     if (!/^https?:\/\/www\.snf\.jp\/[\w./-]+$/.test(n.url)) continue;
     try {
       const { text, ...parsed } = parseNotice(await get(n.url.replace(/^http:/, "https:")), n.date);

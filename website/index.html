@@ -10,15 +10,19 @@
     if (new URLSearchParams(location.search).has("embed")) {
       document.documentElement.classList.add("is-embed");
       // 親（カレンダー）の下のバーの高さを受け取る（iframe 内は env(safe-area-inset-bottom) が 0 になるため、通常ブラウザ・iPhone でも沈み込まないようにする）
+      // 送信元のオリジンも確かめる。新ドメインは deploy-pages.yml が APP_ORIGIN の値で書き換える（手元では localhost・127.0.0.1 の親だけ通る）
+      const PARENTS = ["https://realryo1.github.io", "__APP_ORIGIN__"];
+      const localParent = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
       addEventListener("message", (ev) => {
-        if (ev.source !== parent || ev.data?.sm27 !== "embed" || typeof ev.data.navH !== "number") return;
+        if (ev.source !== parent || !(PARENTS.includes(ev.origin) || localParent.test(ev.origin))) return;
+        if (ev.data?.sm27 !== "embed" || typeof ev.data.navH !== "number") return;
         document.documentElement.style.setProperty("--embed-nav-h", `${Math.max(0, ev.data.navH)}px`);
       });
     }
   </script>
-  <!-- 試験版のため検索結果に出さない。正式に公開するときに外す -->
+  <!-- 検索結果に出さない。正式に公開するときに外す -->
   <meta name="robots" content="noindex">
-  <title>北海道運行情報（試験版）</title>
+  <title>北海道運行情報</title>
   <meta name="description" content="札幌・新千歳空港・小樽まわりの鉄道・地下鉄・空港・バス・高速道路・フェリーの運行情報をまとめた非公式ページです。">
   <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -38,7 +42,7 @@
     <div class="dl-col dl-board is-active" data-col="now">
       <header class="dl-head">
         <a class="dl-head__back" href="https://realryo1.github.io/sm27calendar/">SNOWMIKU2027非公式カレンダー →</a>
-        <h1 class="dl-head__title">運行情報<span class="dl-head__beta">試験版</span></h1>
+        <h1 class="dl-head__title">運行情報</h1>
         <p class="dl-head__meta">
           <span id="updated">読み込み中…</span>
           <button type="button" class="dl-head__reload" id="reload">更新</button>

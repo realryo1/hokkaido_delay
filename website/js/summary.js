@@ -3,7 +3,7 @@ import { esc, mark } from "./util.js";
 import { ROUTEMAP } from "./routemap.js";
 import { judgeFerry } from "./ferry.js";
 
-// 手段どうしは代わりになるので、すべて平常／一部に乱れ（平常の手段もある）／すべてに乱れ の3段階にする。集計はページ側だけで行う（Worker は変えていない）
+// 複数の項目から悪い方の状態を選ぶ（集計はページ側だけで行う。Worker は変えていない）
 const worst = (list) =>
   ["suspended", "delay", "normal"].find((st) => list.includes(st)) || (list.includes("offhours") ? "offhours" : "unknown");
 // 手段1つ：id はカードへのリンク先、pick は事業者のデータ → 状態、label は状態 → 表示（関数なら (事業者のデータ, 状態) → 表示。なければ共通の表記）、
@@ -85,7 +85,7 @@ export const SUMMARY = [
 ];
 const CHIP_LABEL = { normal: "平常", delay: "乱れあり", suspended: "運休あり", offhours: "時間外", unknown: "取得できず" };
 
-// 行き先1つ分：手段ごとの状態と、行き先全体の判定
+// 行き先1つ分：手段ごとの状態
 function judge(dest, services) {
   const chips = dest.means
     .filter((m) => services[m.svcId])
@@ -96,14 +96,7 @@ function judge(dest, services) {
       const text = st === "unknown" ? null : typeof m.label === "function" ? m.label(svc, st) : m.label[st];
       return { ...m, st, text: text || CHIP_LABEL[st] };
     });
-  // 時間外・取得できずは判定に使わない
-  const known = chips.map((c) => c.st).filter((st) => ["normal", "delay", "suspended"].includes(st));
-  let verdict = ["unknown", "判定できません"];
-  if (known.length && known.every((st) => st === "normal")) verdict = ["normal", "平常"];
-  else if (known.includes("normal")) verdict = ["delay", "一部に乱れ（平常の手段あり）"];
-  else if (known.length && known.every((st) => st === "suspended")) verdict = ["suspended", "すべて運休・通行止"];
-  else if (known.length) verdict = ["suspended", "すべての手段に乱れ"];
-  return { ...dest, chips, verdict };
+  return { ...dest, chips };
 }
 
 // 手段1つ分の線（札幌の地下鉄の横の短い線）
@@ -128,7 +121,6 @@ function renderMap(groups) {
   const stRow = (i) => 2 * i + 2;
   const segRow = (i) => 2 * i + 3;
   const cells = [];
-  // 右の列（駅のあいだの判定・灰色の線の名前・駅の補足・topNote）は2026-11-19にやめた（ユーザーの希望）。路線図は線と駅だけ
   const piece = (l, row, mod) =>
     cells.push(
       `<span class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)} ${mod}" ${cell(row, l.col + 1)} data-line="${esc(
@@ -146,7 +138,7 @@ function renderMap(groups) {
   }
   // 縦書きの名前を置く区間を選ぶ。名前の長さで区間の高さが決まるので、すでに長い区間に入れて全体を短くする
   // （名前のない区間は、通過する線だけの短い区間になる）。置き場所が1つしかない線から決め、同じ高さなら始まりに近い区間
-  // 灰色の線の名前は縦書きにせず、右の列に横書きで添える
+  // 灰色の線（plain）には名前を付けない
   const size = (l) => [...l.name].length;
   const height = new Map();
   const labelAt = new Map();

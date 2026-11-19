@@ -1,4 +1,4 @@
-// 運行情報（試験版）の入口。index.html が type="module" で読む（公開時は deploy-pages.yml が esbuild で1本にまとめる）
+// 運行情報の入口。index.html が type="module" で読む（公開時は deploy-pages.yml が esbuild で1本にまとめる）
 // Cloudflare Worker（worker/）が5分ごとに集めた JSON を1本だけ取得して描画する。事業者サイトへは直接アクセスしない。
 import { esc, hhmm } from "./util.js";
 import { renderCards, officialLinks, ui } from "./cards.js";
@@ -6,6 +6,7 @@ import { renderSummary, SUMMARY } from "./summary.js";
 import { ROUTEMAP } from "./routemap.js";
 import { initLayout } from "./layout.js";
 import { initPlan } from "./plan.js";
+import { setNow } from "./ferry.js";
 
 // Cloudflare Worker（worker/）の配信先。空にすると sample.json を表示する
 const ENDPOINT = "https://delay.realryo1.com/status.json";
@@ -61,6 +62,7 @@ function render(data) {
   $summary.innerHTML = renderSummary(lastServices);
   // plan.js にシルバーフェリーの今の状況を渡す
   updatePlan(data);
+  setNow(data.sample ? data.updated_at : null);
   $sections.innerHTML = renderCards(lastServices);
 }
 
@@ -127,7 +129,7 @@ $sections.addEventListener(
   "toggle",
   (ev) => {
     if (ev.target.matches?.(".dl-flights")) ui.flightsOpen[ev.target.dataset.card] = ev.target.open;
-    if (ev.target.matches?.(".dl-sailings")) ui.sailingsOpen = ev.target.open;
+    if (ev.target.matches?.(".dl-sailings")) ui.sailingsOpen[ev.target.dataset.card] = ev.target.open;
   },
   true
 );

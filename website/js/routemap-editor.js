@@ -76,7 +76,6 @@ export function startEditor(edit) {
       if (l.to === from) l.to = to;
       if (l.via) l.via = l.via.map((v) => (v === from ? to : v));
     }
-    for (const [id, above] of Object.entries(data.captions)) if (above === from) data.captions[id] = to;
   }
   // 途中の駅が変わったら、範囲の外になった停車駅を外す
   function trimVia(l) {
@@ -125,10 +124,6 @@ export function startEditor(edit) {
           out.push(`「${l.name}」は駅「${s.name}」に停まりますが、${l.col} 列目が駅の幅の外です`);
       }
     }
-    for (const [id, above] of Object.entries(data.captions)) {
-      const k = at(above);
-      if (k < 0 || k >= data.stations.length - 1) out.push(`「${groups.find((g) => g.id === id)?.name || id}」の判定の位置「${above}」の下に区間がありません`);
-    }
     return out;
   }
 
@@ -136,11 +131,10 @@ export function startEditor(edit) {
   // 1行に1つずつ書く（差分を見やすくするため）
   const j = (v) => JSON.stringify(v);
   // 項目の順をそろえる（編集で順が変わっても差分が出ないように）
-  const KEYS = ["name", "sub", "branch", "left", "right", "from", "to", "up", "col", "via"];
+  const KEYS = ["name", "branch", "left", "right", "from", "to", "up", "col", "via"];
   const sorted = (o) => Object.fromEntries(KEYS.filter((k) => k in o).map((k) => [k, o[k]]));
   function format() {
     const lines = Object.entries(data.lines).map(([name, l]) => `    ${j(name)}: ${j(sorted(l))}`);
-    const caps = Object.entries(data.captions).map(([id, above]) => `    ${j(id)}: ${j(above)}`);
     return `export const ROUTEMAP = {
   "stations": [
 ${data.stations.map((s) => `    ${j(sorted(s))}`).join(",\n")}
@@ -150,11 +144,7 @@ ${lines.join(",\n")}
   },
   "extras": [
 ${data.extras.map((x) => `    ${j(sorted(x))}`).join(",\n")}
-  ],
-  "captions": {
-${caps.join(",\n")}
-  },
-  "topNote": ${j(data.topNote || "")}
+  ]
 };
 `;
   }
@@ -243,7 +233,6 @@ ${caps.join(",\n")}
           <input type="text" data-act="name" value="${esc(s.name)}" title="駅名">
           <button type="button" data-act="sdel" title="消す">×</button>
           <div class="rme__st-more">
-            <input type="text" data-act="sub" value="${esc(s.sub || "")}" placeholder="駅名の下の小さい説明" title="駅名の下の小さい説明">
             <select data-act="branch" title="横に出す短い線">${opt("", "枝なし", s.branch || "")}${groups.map((g) => opt(g.id, `枝：${g.name}`, s.branch || "")).join("")}</select>
             <span class="rme__width" title="駅のカプセルの左端と右端の列。空欄なら停まる線に合わせる">幅：列
               <input type="number" min="1" data-act="left" value="${esc(s.left || "")}" placeholder="自動">〜<input type="number" min="1" data-act="right" value="${esc(s.right || "")}" placeholder="自動">
@@ -266,18 +255,6 @@ ${caps.join(",\n")}
       })
       .join("");
     const extras = data.extras.map((x) => lineRow(x.name, x, true)).join("");
-    const caps = groups
-      .filter((g) => !branches.has(g.id))
-      .map(
-        (g) => `<div class="rme__row" style="grid-template-columns: 1fr 1fr">
-          <span>${esc(g.name)}</span>
-          <select data-act="caption" data-group="${esc(g.id)}">${opt("", "出さない", data.captions[g.id] || "")}${data.stations
-            .slice(0, -1)
-            .map((s, i) => opt(s.name, `${s.name} → ${data.stations[i + 1].name}`, data.captions[g.id] || ""))
-            .join("")}</select>
-        </div>`
-      )
-      .join("");
     const warn = problems();
     const prevStatus = $panel.querySelector(".rme__status")?.textContent;
     $panel.innerHTML = `
@@ -298,10 +275,6 @@ ${caps.join(",\n")}
       <p class="rme__group">運行情報のない線（灰色）</p>
       ${extras}
       <p><button type="button" data-act="xadd">灰色の線を足す</button></p>
-      <h3>判定を出す区間</h3>
-      ${caps}
-      <h3>上へ消える線の行の説明</h3>
-      <input type="text" data-act="topnote" value="${esc(data.topNote || "")}">
     `;
     $panel.querySelector(".rme__status").classList.toggle("is-dirty", dirty);
     $hl.textContent = selected
@@ -376,9 +349,6 @@ ${caps.join(",\n")}
       if (!to || names().includes(to)) return draw();
       renameStation(data.stations[i].name, to);
       data.stations[i].name = to;
-    } else if (act === "sub") {
-      if ($in.value.trim()) data.stations[i].sub = $in.value.trim();
-      else delete data.stations[i].sub;
     } else if (act === "branch") {
       if ($in.value) data.stations[i].branch = $in.value;
       else delete data.stations[i].branch;
@@ -412,11 +382,6 @@ ${caps.join(",\n")}
       if (!to || data.extras.some((x) => x.name === to)) return draw();
       l.name = to;
       selected = to;
-    } else if (act === "caption") {
-      if ($in.value) data.captions[$in.dataset.group] = $in.value;
-      else delete data.captions[$in.dataset.group];
-    } else if (act === "topnote") {
-      data.topNote = $in.value;
     } else return;
     changed();
   });

@@ -24,9 +24,13 @@ const PER_DAY = {
 };
 
 // 日本時間の今日・明日（"2026-11-19"）
+// サンプル表示（?sample）のときは、サンプルの更新時刻を「今」にする（main.js が setNow で渡す）
+let fixedNow = null;
+export const setNow = (iso) => (fixedNow = iso ? Date.parse(iso) : null);
 function days() {
   const iso = (t) => new Date(t).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-  return [iso(Date.now()), iso(Date.now() + 24 * 3600 * 1000)];
+  const now = fixedNow ?? Date.now();
+  return [iso(now), iso(now + 24 * 3600 * 1000)];
 }
 
 export function judgeFerry(id, svc) {

@@ -1,19 +1,17 @@
 // 行き先ごとのまとめの路線図の配線。summary.js の renderMap が読む。
 // 手元で index.html?sample&edit を開くと、配線エディタ（routemap-editor.js）で編集・保存できる（エディタはこのコメントを残して下を書き直す）
-// stations：駅（上から下へ）。sub は駅名の下の小さい説明、branch は駅から横に出す短い線（summary.js の SUMMARY の id）
+// stations：駅（上から下へ）。branch は駅から横に出す短い線（summary.js の SUMMARY の id）
 //   left・right は駅のカプセルの左端と右端の列（なければ停まる線に合わせる）
 // lines：手段の名前（SUMMARY の means の名前）→ 置き方。from・to は始まりと終わりの駅（up なら from から上へ出して消えていく線）、
 //   col は左から何列目か、via は途中で停まる駅（ほかの駅は通過として駅の上に線を重ねる）。ここにない手段は路線図に描かない
-// extras：運行情報のない線（状態の印を付けず、細い灰色の線にする。名前は区間の右に横書き）
-// captions：行き先ごとの判定を、どの駅の下の区間の右に出すか（SUMMARY の id → 上の駅）
-// topNote：いちばん上の駅より上（上へ出す線の行）の右に出す説明
+// extras：運行情報のない線（状態の印を付けず、細い灰色の線にする。名前は出さない）
 export const ROUTEMAP = {
   "stations": [
     {"name":"小樽","left":1,"right":9},
     {"name":"札幌","branch":"subway"},
     {"name":"新千歳空港"},
     {"name":"苫小牧駅","left":3,"right":9},
-    {"name":"苫小牧港","sub":"西港フェリーターミナル","left":5,"right":9},
+    {"name":"苫小牧港","left":5,"right":9},
     {"name":"本州","right":9}
   ],
   "lines": {
@@ -34,11 +32,5 @@ export const ROUTEMAP = {
   },
   "extras": [
     {"name":"道南バス・タクシー","from":"苫小牧駅","to":"苫小牧港","col":7}
-  ],
-  "captions": {
-    "otaru": "小樽",
-    "airport": "札幌",
-    "honshu": "苫小牧港"
-  },
-  "topNote": "小樽港から新潟・舞鶴へ"
+  ]
 };

@@ -1,4 +1,4 @@
-/* 北海道運行情報（試験版）のスタイル。1枚のファイルに、土台（配色・フォント・背景・フッター）と画面の部品を置く。
+/* 北海道運行情報のスタイル。1枚のファイルに、土台（配色・フォント・背景・フッター）と画面の部品を置く。
    配色はSNOWMIKU2027公式サイトのパレットに準拠（姉妹プロジェクトのカレンダーと同じ色から始めたが、今はこのページだけで決める） */
 :root {
   --col-ink: #4F458F;
@@ -160,17 +160,6 @@ button { font: inherit; color: inherit; }
   font-weight: 400;
   font-size: 1.3rem;
   line-height: 1.3;
-}
-.dl-head__beta {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--brand-gradient);
-  color: #fff;
-  font-family: var(--font-base);
-  font-weight: 700;
-  font-size: .7rem;
-  vertical-align: middle;
 }
 .dl-head__meta {
   display: flex;
@@ -817,7 +806,7 @@ span.dl-mark--unknown { display: grid; place-items: center; color: var(--mark-of
 .dl-tile.is-delay .dl-tile__label { color: var(--st-delay); }
 .dl-tile.is-suspended .dl-tile__label { color: var(--st-suspended-bg); }
 a.dl-tile:hover .dl-tile__name { text-decoration: underline; }
-/* タイルの下の明細（高速道路の規制の区間、中央バスの系統、地下鉄の案内） */
+/* タイルの下の明細（高速道路の規制の区間、中央バスの系統） */
 .dl-tiles + .dl-subitems { margin-top: 8px; }
 .dl-subitems b { margin-right: 4px; }
 

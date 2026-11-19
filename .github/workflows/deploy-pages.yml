@@ -12,6 +12,10 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# カレンダー側の新ドメイン（Vercel）のオリジン。index.html の postMessage 受信（親の下のバーの高さ）で送信元として許可する
+env:
+  APP_ORIGIN: https://sm27app.realryo1.jp
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -32,6 +36,12 @@ jobs:
           v="$(date -u '+%Y%m%d%H%M%S')"
           sed -i -E "s/(src|href)=\"([a-z/-]+\.(css|js))\"/\1=\"\2?v=${v}\"/g" website/index.html
           grep -o -E "(src|href)=\"[a-z./-]+\?v=[0-9]+\"" website/index.html
+
+      # postMessage を受ける親のオリジン（新ドメイン）を index.html に書き込む
+      - name: Inject parent origin
+        run: |
+          sed -i "s#__APP_ORIGIN__#${APP_ORIGIN}#" website/index.html
+          grep -q "\"${APP_ORIGIN}\"" website/index.html
 
       # 公開するファイルだけ、JS は入口（js/main.js）から読むモジュールを1本にまとめて圧縮し、CSS も圧縮する（リポジトリのソースは読みやすいまま）。
       # 1本にまとめるので、モジュールどうしの import に ?v= がなくても古いファイルが混ざらない。配線エディタ（routemap-editor.js）は手元でしか読まないので、まとめない

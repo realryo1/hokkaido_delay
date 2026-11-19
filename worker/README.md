@@ -1,12 +1,12 @@
-# 北海道運行情報 Worker（試験版）
+# 北海道運行情報 Worker
 
 `website/` のページに表示する運行情報を集める Cloudflare Worker です。設計の元は `document/tienResearch.md`、実装と進捗のまとめは `document/delayProgress.md`。
 
-- Cron（5分ごと、毎時 :02, :07, …。新千歳空港 FIS の更新 :01, :06, … の直後）で各事業者から取得し、Workers KV に1本の JSON（キー `status`）として保存
+- Cron（5分ごと、毎時 :02, :07, …。新千歳空港 FISの更新 :01, :06, … の直後）で各事業者から取得し、Workers KV に1本の JSON（キー `status`）として保存
 - `GET /status.json` で KV の JSON を返す（isolate のメモリに60秒持つ。workers.dev では Cache API が効かないため）。読めるのは Origin（なければ Referer）が `https://realryo1.github.io` か localhost のときだけで、それ以外は 403。`wrangler dev`（localhost:8787）では制限しない
 - 作者の確認用に、環境変数 `ALLOW_IPS`（カンマ区切りの IP。ダッシュボードの Worker → Settings → Variables and Secrets で設定し、リポジトリには書かない）の IP からは、Origin・Referer がなくても `/status.json` を返す（ブラウザで URL を直接開いて JSON を見られる）
 - `/status.json` は日本国内のネットワーク（`request.cf.country` が JP）にだけ返す。国外なら `{"error":"region"}` の 403 で、ページが位置情報の許可を求め、約10km単位に丸めた現在地を `?lat=&lon=` で付けて取り直す（国内の範囲は `src/index.js` の `JAPAN`）
-- IP ごとに10秒60回までのレート制限（ダッシュボードの Security rules にある WAF の Rate Limiting ルール。超えたら10秒ブロック）。携帯回線などで大勢が IP を共有するのでゆるめ。workers.dev は止めているので、必ず WAF を通る
+- IP ごとに10秒60回までのレート制限（ダッシュボードのSecurity rules にある WAF の Rate Limiting ルール。超えたら10秒ブロック）。携帯回線などで大勢が IP を共有するのでゆるめ。workers.dev は止めているので、必ず WAF を通る
 - 閲覧者が増えても、事業者サイトへのアクセスは5分に1回のまま
 
 - `GET /health` は外部の監視サービス向け。異常なら 503（KV を読むだけで、事業者へは取りに行かない）
@@ -43,7 +43,7 @@
 ## 変更するときの注意
 
 - Cron の間隔を変えるときは、`src/index.js` の `INTERVAL_MIN` も合わせる（`next_update_at` の計算に使う）
-- 空港の時刻は FIS の更新（:01, :06, …）の直後に取るため、Cron は :02, :07, … にしている
+- 空港の時刻は FISの更新（:01, :06, …）の直後に取るため、Cron は :02, :07, … にしている
 - 事業者の文章（遅れの理由などの長文）はページに出さず、状態・便名・時刻などの事実だけを JSON に入れる。読むために取り込むのはよい。LLM がまとめた内容は事実なので出してよい
 - User-Agent にはプロジェクト名とサイトの URL を入れている（`src/http.js`）。ブラウザを装わない
 - 手元の確認で事業者サイトへ取りに行くときは、連続で実行しないこと

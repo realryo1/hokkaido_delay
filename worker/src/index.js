@@ -85,6 +85,11 @@ function health(data) {
   if (!(age < HEALTH_STALE_MIN)) problems.push(`更新が止まっている（最終更新 ${data.updated_at}）`);
   const failCount = Object.fromEntries(Object.entries(data.services || {}).map(([id, svc]) => [id, svc.fail_count || 0]));
   for (const e of data.meta?.source_errors || []) {
+    // 事業者ごとの連続失敗回数がない項目（LLM 処理の予期せぬ例外 id: "llm"）は回数を出さず、notes に載せるだけにする（LLM 自体の失敗は下の llmResults で数える）
+    if (!(e.id in failCount)) {
+      notes.push(`${e.id}: ${e.message}`);
+      continue;
+    }
     const text = `${e.id}: ${e.message}（${failCount[e.id]}回連続）`;
     (failCount[e.id] >= HEALTH_FAIL_COUNT ? problems : notes).push(text);
   }

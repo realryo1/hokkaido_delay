@@ -39,7 +39,7 @@ function classify(text) {
   return { status: delayed || maybe ? "delay" : "normal", label: [head, tail].filter(Boolean).join("・") };
 }
 
-// お知らせのページから便ごとの状況を読む。year はお知らせの日付の年（12月のお知らせに1月の便が載るときは翌年にする）
+// お知らせのページから便ごとの状況を読む。year はお知らせの日付の年（12月のお知らせに1月の便が載るときは翌年、1月のお知らせに12月の便が載るときは前年にする）
 export function parseNotice(html) {
   const start = html.indexOf("postTitle");
   if (start < 0) return { sailings: [], time: null, unread: 0, posted: null, text: "" };
@@ -57,7 +57,8 @@ export function parseNotice(html) {
   const posted = /(\d{4})\.(\d{1,2})\.(\d{1,2})/.exec(text);
   const year = posted ? +posted[1] : new Date().getFullYear();
   const postedMonth = posted ? +posted[2] : 1;
-  const iso = (m, d) => `${m < postedMonth - 6 ? year + 1 : year}-${pad(m)}-${pad(d)}`;
+  // 12月のお知らせに1月の便、1月のお知らせに12月の便が載ることがある
+  const iso = (m, d) => `${m < postedMonth - 6 ? year + 1 : m > postedMonth + 6 ? year - 1 : year}-${pad(m)}-${pad(d)}`;
 
   // 題名の「（3月15日16:00現在）」を情報の時刻にする
   const t = /(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})\s*現在/.exec(lines.slice(0, 3).join(" "));

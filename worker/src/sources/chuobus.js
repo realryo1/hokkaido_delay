@@ -21,13 +21,13 @@ const STATE_RE = new RegExp(`\\s(${Object.keys(STATES).join("|")})(?:\\s|$)`);
 const noEn = (s) => s.replace(/[（(][\x20-\x7e]+[）)]/g, "").replace(/\s+/g, " ").trim();
 const GROUPS = [
   { id: "airport", name: "新千歳空港連絡", test: /空港連絡バス/, route: (head) => noEn(head.split(/<br\s*\/?>/i)[1] || "") },
-  { id: "otaru", name: "高速おたる号（札幌〜小樽）", test: /高速おたる号/, route: (head) => /高速おたる号(?:（[^）]*）)?/.exec(head)[0] },
+  { id: "otaru", name: "高速おたる号（札幌〜小樽）", test: /高速おたる号/, route: (head) => /高速おたる号(?:（[^）]*）)?/.exec(head)?.[0] || "高速おたる号" },
   // 苫小牧西港（シルバーフェリー）へ行く便があるので載せる（plan.js でも使う）
   {
     id: "tomakomai",
     name: "高速とまこまい号（札幌〜苫小牧）",
     test: /高速とまこまい号/,
-    route: (head) => /高速とまこまい号(?:（[^）]*）)?/.exec(head)[0],
+    route: (head) => /高速とまこまい号(?:（[^）]*）)?/.exec(head)?.[0] || "高速とまこまい号",
   },
 ];
 

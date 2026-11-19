@@ -5,7 +5,8 @@ import { judgeFerry } from "./ferry.js";
 
 // 1分ごとの描き直しで消えないよう、一覧の開閉とチェックの状態をここに持つ（出発・到着済の便は最初は隠す。フェリーの便ごとの状況は最初は閉じる）
 // 便の一覧は新千歳空港（airport）と丘珠空港（okadama）で別々に持つ。変えるのは main.js のイベント
-export const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: false };
+// フェリーの便ごとの状況も会社別（sailingsOpen[id]）
+export const ui = { flightsOpen: { airport: false, okadama: false }, showDone: { airport: false, okadama: false }, sailingsOpen: {} };
 
 // 取得に失敗している事業者：見出し（フェリーは社名）の横に小さく「情報途絶（最終取得 07:57）」と出す。
 // 状態は前回のものを出さず「？ 情報途絶」にする。公式へは見出し（社名）のリンクから
@@ -211,7 +212,7 @@ function renderHokto(svc) {
   return card("hokto", svc, body, svc.ok ? `${hhmm(svc.fetched_at)} 取得` : "", "運休の有無だけで、道路状況などによる遅れは載りません。");
 }
 
-// フェリー：4社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に注意と公式リンクを出す
+// フェリー：4社とも1行ずつなので1枚のカードにまとめる。取得に失敗した会社は、その行に「情報途絶」を出す
 //   シルバーフェリー：定型の文言（通常運航しています／欠航または遅延便があります）。お知らせから読んだ便ごとの状況
 //   さんふらわあ：自由記述の欄から判定した状態（文章は表示しない）。平常時以外は欄から読んだ便ごとの状況
 //   新日本海フェリー：運航状況のお知らせの件数と日付（題名は表示しない）。お知らせから読んだ欠航・遅れの便
@@ -222,7 +223,7 @@ const FERRIES = ["silverferry", "sunflower", "snf", "taiheiyo"];
 const SILVER_SHIP = { シルバープリンセス: "princess", シルバーティアラ: "tiara", シルバーブリーズ: "breeze", シルバーエイト: "eight" };
 const AUTO = `<span class="dl-auto">Haiku5.5による補足</span>`;
 // 出港・到着の時刻（"2026-04-21T03:15" と済かどうか）→「4/21 03:15予定」
-const atText = (a) => `${md(a.at)} ${hhmm(a.at)}${a.done ? "" : "予定"}`;
+const atText = (a) => `${md(a.at)} ${hhmm(a.at)}${a.done ? "済" : "予定"}`;
 // 便の補足（LLM が読んだもの）。LLM が足した便は行に印があるので補足には付けない。船名は、正規表現で読んだ会社では行に出す
 function sailingNote(s, shipInLine) {
   const xs = [];
@@ -241,20 +242,22 @@ const llmSummary = (llms) =>
   llms
     .map((l) => {
       const reason = l.reason ? [`理由：${esc(l.reason)}`] : [];
-      const days = Array.isArray(l.summary) ? l.summary.map((x) => `${esc(x.label)}：${esc(x.text)}`) : [esc(l.summary)];
+      const days = Array.isArray(l.summary) ? l.summary.map((x) => `${esc(x.label)}：${esc(x.text)}`) : l.summary ? [esc(l.summary)] : [];
       const other = (l.general || []).map((g, i) => `${i ? "" : "その他："}${esc(g)}`);
-      return `<p class="dl-llm">${AUTO}<span>${[...reason, ...days, ...other].join("<br>")}</span></p>`;
+      const lines = [...reason, ...days, ...other];
+      // 中身がなければ枠ごと出さない
+      return lines.length ? `<p class="dl-llm">${AUTO}<span>${lines.join("<br>")}</span></p>` : "";
     })
     .join("");
 // 要約と、便の一覧（開閉できる）。llms は LLM の結果。unread は読めない書き方の便があるか
 // shipInLine は、正規表現で読んだ船名を line で行に出しているか（補足に重ねて出さない）
 // 見出しは「title（count便・at）」
-function sailingsBlock({ title, count, at, list, llms, unread, rowClass, line, shipInLine }) {
+function sailingsBlock({ id, title, count, at, list, llms, unread, rowClass, line, shipInLine }) {
   const about = llmSummary(llms);
   if (!list.length && !unread) return about;
   // 便は出港の日時の順に並べる（お知らせは出発港ごとに書かれているので、そのままだと時間が行ったり来たりする）。同じ日時は出発港の順
   list = [...list].sort((a, b) => `${a.date} ${a.time} ${a.from}`.localeCompare(`${b.date} ${b.time} ${b.from}`));
-  return `${about}<details class="dl-sailings"${ui.sailingsOpen ? " open" : ""}>
+  return `${about}<details class="dl-sailings" data-card="${esc(id)}"${ui.sailingsOpen[id] ? " open" : ""}>
       <summary>${esc(title)}（${count}便${at ? `・${esc(at)}` : ""}）</summary>
       <ul class="dl-subitems">${list
         .map((s) => `<li class="dl-ship dl-ship--${esc(rowClass(s))}">${badge(s.status, s.label)}<span>${line(s)}${s.source === "llm" ? ` ${AUTO}` : ""}${sailingNote(s, shipInLine)}</span></li>`)
@@ -274,6 +277,7 @@ function ferryRow(id, svc) {
     // 欠航・遅延のお知らせから読んだ便ごとの状況（日付・出発港・時刻・船名）。平常時はない
     const list = svc.sailings || [];
     extra = sailingsBlock({
+      id,
       title: "便ごとの状況",
       count: list.length,
       at: asOf(svc.source_time),
@@ -291,6 +295,7 @@ function ferryRow(id, svc) {
     if (id === "sunflower") {
       const list = svc.sailings || [];
       extra = sailingsBlock({
+        id,
         title: "便ごとの状況",
         count: list.length,
         at: "",
@@ -312,6 +317,7 @@ function ferryRow(id, svc) {
     const list = notices.flatMap((n) => n.sailings || []);
     const times = notices.map((n) => n.time).filter(Boolean).sort();
     extra = sailingsBlock({
+      id,
       title: "欠航・遅れの便",
       count: list.filter((s) => s.status !== "normal").length,
       at: asOf(times.at(-1)),
