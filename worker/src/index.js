@@ -76,7 +76,7 @@ function json(body, status, cacheControl, headers = {}) {
   });
 }
 
-// 異常（503 にする）：更新が止まっている／同じ事業者で続けて取得に失敗している／一部が読めない（構造変更の疑い）
+// 異常（503 にする）：更新が止まっている／同じ事業者で続けて取得に失敗している／一部が読めない（構造変更の疑い）／LLM がキーなし・3回続けて失敗・予期せぬ例外
 // 1回だけの取得失敗は一時的なことが多いので 503 にはせず、notes に載せるだけにする
 function health(data) {
   const problems = [];
@@ -85,9 +85,9 @@ function health(data) {
   if (!(age < HEALTH_STALE_MIN)) problems.push(`更新が止まっている（最終更新 ${data.updated_at}）`);
   const failCount = Object.fromEntries(Object.entries(data.services || {}).map(([id, svc]) => [id, svc.fail_count || 0]));
   for (const e of data.meta?.source_errors || []) {
-    // 事業者ごとの連続失敗回数がない項目（LLM 処理の予期せぬ例外 id: "llm"）は回数を出さず、notes に載せるだけにする（LLM 自体の失敗は下の llmResults で数える）
+    // 事業者ごとの連続失敗回数がない項目（addNotes の予期せぬ例外 id: "llm" など）は1回目から即異常（503）にする
     if (!(e.id in failCount)) {
-      notes.push(`${e.id}: ${e.message}`);
+      problems.push(`${e.id}: ${e.message}`);
       continue;
     }
     const text = `${e.id}: ${e.message}（${failCount[e.id]}回連続）`;
@@ -114,7 +114,8 @@ export default {
         try {
           await addNotes(env, next.services, prev?.services);
         } catch (e) {
-          next.meta.source_errors.push({ id: "llm", message: `LLM: ${String(e?.message || e).slice(0, 180)}` });
+          next.meta.source_errors.push({ id: "llm", message: String(e?.message || e).slice(0, 180) });
+          next.meta.fallback_active = true;
         }
         // scheduledTime はこの回の予定時刻（例 21:02:00）。次の回はその INTERVAL_MIN 分後
         next.next_update_at = jstIso(new Date(event.scheduledTime + INTERVAL_MIN * 60000));

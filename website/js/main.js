@@ -59,10 +59,10 @@ function render(data) {
   $updated.textContent = `${hhmm(data.updated_at)} 更新${next}`;
   // まとめと各社のカードは、別々の入れ物に描く（あいだに置くものが増えても描き分けられるように）
   lastServices = data.services || {};
+  setNow(data.sample ? data.updated_at : null);
   $summary.innerHTML = renderSummary(lastServices);
   // plan.js にシルバーフェリーの今の状況を渡す
   updatePlan(data);
-  setNow(data.sample ? data.updated_at : null);
   $sections.innerHTML = renderCards(lastServices);
 }
 

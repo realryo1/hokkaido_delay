@@ -36,7 +36,7 @@ export function startEditor(edit) {
     .rme__row + .rme__row { border-top: 1px solid var(--col-paper-muted); }
     .rme__row.is-selected { background: var(--col-link-lighter); }
     .rme__st { grid-template-columns: auto auto 1fr auto; }
-    .rme__st-more { grid-column: 3 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .rme__st-more { grid-column: 3 / -1; display: grid; grid-template-columns: 1fr; gap: 4px; }
     .rme__width { grid-column: 1 / -1; }
     .rme__width input[type=number] { width: 4.5em; }
     .rme__ln { grid-template-columns: 1fr; }
@@ -69,7 +69,7 @@ export function startEditor(edit) {
     edit.rerender();
     draw();
   }
-  // 駅の名前を変えたら、線・判定の位置の参照も直す
+  // 駅の名前を変えたら、線の参照も直す
   function renameStation(from, to) {
     for (const l of [...Object.values(data.lines), ...data.extras]) {
       if (l.from === from) l.from = to;

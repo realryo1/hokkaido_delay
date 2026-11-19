@@ -222,8 +222,7 @@ const FERRIES = ["silverferry", "sunflower", "snf", "taiheiyo"];
 // シルバーフェリーの便ごとの行の色（delay.css の .dl-ship--*。plan.js の SHIP_CLASS と同じ）。代船などは灰色
 const SILVER_SHIP = { シルバープリンセス: "princess", シルバーティアラ: "tiara", シルバーブリーズ: "breeze", シルバーエイト: "eight" };
 const AUTO = `<span class="dl-auto">Haiku5.5による補足</span>`;
-// 出港・到着の時刻（"2026-04-21T03:15" と済かどうか）→「4/21 03:15予定」
-// verb は「出港」「入港」。済なら「4/21 02:00入港済」、まだなら「4/21 03:15入港予定」
+// 出港・到着の時刻（"2026-04-21T03:15" と済かどうか）。verb は「出港」「入港」。済なら「4/21 02:00入港済」、まだなら「4/21 03:15入港予定」
 const atText = (a, verb) => `${md(a.at)} ${hhmm(a.at)}${verb}${a.done ? "済" : "予定"}`;
 // 便の補足（LLM が読んだもの）。LLM が足した便は行に印があるので補足には付けない。船名は、正規表現で読んだ会社では行に出す
 function sailingNote(s, shipInLine) {

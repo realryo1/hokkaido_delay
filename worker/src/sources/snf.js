@@ -66,8 +66,9 @@ export function parseNotice(html, posted) {
     .map(norm)
     .filter(Boolean);
 
-  const year = posted ? +posted.slice(0, 4) : new Date().getFullYear();
-  const month = posted ? +posted.slice(5, 7) : 1;
+  const jstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const year = posted ? +posted.slice(0, 4) : jstNow.getUTCFullYear();
+  const month = posted ? +posted.slice(5, 7) : jstNow.getUTCMonth() + 1;
   // 12月のお知らせに1月の便、1月のお知らせに12月の便が載ることがある
   const iso = (m, d) => `${m < month - 6 ? year + 1 : m > month + 6 ? year - 1 : year}-${pad(m)}-${pad(d)}`;
 

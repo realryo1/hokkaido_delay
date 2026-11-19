@@ -106,7 +106,7 @@ const track = (c) =>
       <span class="dl-track__label" aria-hidden="true">${esc(c.name)}</span>
     </a></li>`;
 
-// 路線図は1つの grid に描く。列は「左の余白・線の列（col）・右の駅名と判定」、行は「駅・駅のあいだ」を交互に並べる
+// 路線図は1つの grid に描く。列は「左の余白・線の列（col）」、行は「駅・駅のあいだ」を交互に並べる
 // （1行目は上へ出す線、駅 i は 2i+2 行目、駅 i と i+1 のあいだは 2i+3 行目）。線は行ごとに1つずつ置き、名前と印は1つの区間にだけ付ける
 // 配線は routemap.js（ROUTEMAP）。手段は名前で置き方を引き、置き方のない手段は描かない
 // マスの置き場所は style の --row・--col（・--col-end）で渡し、grid-area などは delay.css の .dl-map の中で決める
