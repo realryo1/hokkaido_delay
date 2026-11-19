@@ -826,6 +826,20 @@ a.dl-tile:hover .dl-tile__name { text-decoration: underline; }
 .dl-tiles + .dl-subitems { margin-top: 8px; }
 .dl-subitems b { margin-right: 4px; }
 
+/* 高速道路：路線ごとに、左にタイル、右に規制の区間（種類のバッジの下に区間を並べる） */
+.dl-card--expressway .dl-card__title a { color: var(--col-ink); text-decoration: underline; text-underline-offset: 3px; }
+.dl-roads { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.dl-road { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 12px; align-items: start; }
+.dl-road__tile .dl-tile { width: 100%; }
+.dl-road__body { display: grid; gap: 10px; min-width: 0; padding-top: 2px; font-size: .8rem; color: var(--col-ink); }
+.dl-road__group { display: grid; justify-items: start; gap: 4px; }
+.dl-road__list { margin: 0; padding: 0; list-style: none; line-height: 1.5; }
+.dl-road__list li { padding: 1px 0; }
+.dl-road__minor { margin: 0; line-height: 1.5; }
+/* 規制ありの路線は、タイルの背景（同じ色）を行の横いっぱいに広げ、理由・区間の文字の下に敷く */
+.dl-road--delay { padding: 8px; border-top: 4px solid var(--brand); border-radius: 12px; background: var(--col-paper-muted); }
+.dl-road--delay .dl-road__tile .dl-tile { border-top: 0; }
+
 /* 便の一覧（空港）の表 */
 .dl-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .dl-table th,

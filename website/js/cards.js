@@ -31,13 +31,14 @@ function card(id, svc, body, timeText, note = "") {
 // 路線・系統1つ分の正方形のタイル。名前と、大きな印（○△×−？）と状態の言葉だけで見せる。名前の（）の中（区間など）は出さない
 //   { name, status, label, href, line }。line は上の帯の色（地下鉄のラインカラーなど。delay.css の .dl-line--*）
 const TILE_LABEL = { normal: "平常", delay: "遅れあり", suspended: "運休", offhours: "時間外", unknown: "取得できず" };
-function tile({ name, status, label, href, line }) {
+function tileBox({ name, status, label, href, line }) {
   const inner = `<span class="dl-tile__name">${esc(name.replace(/（.*$/, ""))}</span>
       <span class="dl-tile__mark" aria-hidden="true">${mark(status)}</span>
       <span class="dl-tile__label">${esc(label || TILE_LABEL[status] || TILE_LABEL.unknown)}</span>`;
   const cls = `dl-tile is-${esc(status || "unknown")}${line ? ` dl-line--${esc(line)}` : ""}`;
-  return `<li>${href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="${cls}">${inner}</div>`}</li>`;
+  return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="${cls}">${inner}</div>`;
 }
+const tile = (o) => `<li>${tileBox(o)}</li>`;
 // タイルを並べる。取得に失敗しているときは、前回の状態ではなく「？ 情報途絶」にする
 const tiles = (svc, list) =>
   `<ul class="dl-tiles">${list.map((o) => tile(svc.ok ? o : { ...o, status: "unknown", label: STALE })).join("")}</ul>`;
@@ -157,23 +158,34 @@ function renderAirport(id, svc, short = AIRLINE_SHORT) {
   return card(id, svc, body, svc.ok ? (svc.source_time ? `${hhmm(svc.source_time)} 時点` : `${hhmm(svc.fetched_at)} 取得`) : "", note);
 }
 
-// 高速道路：路線ごとの状態と、重要な規制（通行止・チェーン規制・事故など）の区間。車線規制・除雪作業などは件数だけ出す
+// 高速道路：路線ごとに、左に状態のタイル、右に重要な規制（通行止・チェーン規制・事故など）の区間。
+// 同じ種類（冬用タイヤ等装着など）の区間は、種類のバッジの下にまとめる。理由（作業・雪など）は出さない。車線規制・除雪作業などは件数だけ出す
 const ROAD_LABEL = { suspended: "通行止あり", delay: "規制あり", normal: "重要な規制なし" };
 function renderExpressway(svc) {
   const roads = svc.roads || [];
-  const items = roads.flatMap((r) => {
-    const name = r.name.replace(/（.*$/, "");
+  const rows = roads.map((r) => {
+    const tileHtml = tileBox(
+      svc.ok
+        ? { name: r.name, status: r.status, label: ROAD_LABEL[r.status] }
+        : { name: r.name, status: "unknown", label: STALE }
+    );
     const major = (r.items || []).filter((x) => x.major);
     const minor = (r.items || []).length - major.length;
-    return [
-      ...major.map(
-        (x) => `<li>${badge(x.kind === "closed" ? "suspended" : "delay", x.label)}
-            <span><b>${esc(name)}</b> ${esc(x.section)}${x.direction ? `（${esc(x.direction)}）` : ""}${x.reason ? `　原因：${esc(x.reason)}` : ""}</span></li>`
-      ),
-      ...(minor ? [`<li><span><b>${esc(name)}</b> そのほかの規制（車線規制・除雪作業など） ${minor}件</span></li>`] : []),
-    ];
+    const groups = new Map();
+    for (const x of major) {
+      const key = `${x.kind}\n${x.label}`;
+      if (!groups.has(key)) groups.set(key, { kind: x.kind, label: x.label, list: [] });
+      groups.get(key).list.push(x);
+    }
+    const groupHtml = [...groups.values()].map(
+      (g) => `<div class="dl-road__group">${badge(g.kind === "closed" ? "suspended" : "delay", g.label)}
+          <ul class="dl-road__list">${g.list.map((x) => `<li>${esc(x.section)}${x.direction ? `（${esc(x.direction)}）` : ""}</li>`).join("")}</ul></div>`
+    );
+    const minorHtml = minor ? `<p class="dl-road__minor">そのほかの規制（車線規制・除雪作業など）${minor}件</p>` : "";
+    const bodyHtml = svc.ok ? groupHtml.join("") + minorHtml : "";
+    return `<li class="dl-road dl-road--${esc(r.status || "unknown")}"><div class="dl-road__tile">${tileHtml}</div><div class="dl-road__body">${bodyHtml}</div></li>`;
   });
-  const body = tiles(svc, roads.map((r) => ({ name: r.name, status: r.status, label: ROAD_LABEL[r.status] }))) + details(svc, items);
+  const body = `<ul class="dl-roads">${rows.join("")}</ul>`;
   const note = "表示まで10〜15分ほど遅れることがあります。通行止・チェーン規制は急に変わるので、出発前に必ず公式の交通情報を確認してください。";
   return card("expressway", svc, body, svc.source_time ? `${hhmm(svc.source_time)} 時点` : "", note);
 }
