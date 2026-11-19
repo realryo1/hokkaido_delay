@@ -109,8 +109,9 @@ const track = (c) =>
 // 路線図は1つの grid に描く。列は「左の余白・線の列（col）」、行は「駅・駅のあいだ」を交互に並べる
 // （1行目は上へ出す線、駅 i は 2i+2 行目、駅 i と i+1 のあいだは 2i+3 行目）。線は行ごとに1つずつ置き、名前と印は1つの区間にだけ付ける
 // 配線は routemap.js（ROUTEMAP）。手段は名前で置き方を引き、置き方のない手段は描かない
-// マスの置き場所は style の --row・--col（・--col-end）で渡し、grid-area などは delay.css の .dl-map の中で決める
-const cell = (row, col, colEnd) => `style="--row: ${row}; --col: ${col}${colEnd ? `; --col-end: ${colEnd}` : ""}"`;
+// マスの置き場所は style の --row・--col（複数行をまたぐ線は --row-end、駅のカプセルは --col-end まで）で渡し、grid-area などは delay.css の .dl-map の中で決める
+const cell = (row, col, colEnd, rowEnd) =>
+  `style="--row: ${row}; --col: ${col}${colEnd ? `; --col-end: ${colEnd}` : ""}${rowEnd ? `; --row-end: ${rowEnd}` : ""}"`;
 function renderMap(groups) {
   const map = ROUTEMAP;
   const at = (name) => map.stations.findIndex((s) => s.name === name);
@@ -121,12 +122,18 @@ function renderMap(groups) {
   const stRow = (i) => 2 * i + 2;
   const segRow = (i) => 2 * i + 3;
   const cells = [];
-  const piece = (l, row, mod) =>
+  // 線の区間（名前のない区間も含む）は、どこを押しても線の詳細へ飛ぶようにリンクにする。名前の区間のリンクと同じ行き先。
+  // 灰色の線（plain）には詳細がないので、リンクにしない
+  const piece = (l, row, mod) => {
+    const attrs = `class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)} ${mod}" ${cell(row, l.col + 1)} data-line="${esc(
+      l.name
+    )}"`;
     cells.push(
-      `<span class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)} ${mod}" ${cell(row, l.col + 1)} data-line="${esc(
-        l.name
-      )}"><span class="dl-track__line"></span></span>`
+      l.st === "plain"
+        ? `<span ${attrs}><span class="dl-track__line"></span></span>`
+        : `<a ${attrs} href="#dl-${esc(l.id)}" aria-hidden="true" tabindex="-1"><span class="dl-track__line"></span></a>`
     );
+  };
 
   // 線が通る区間（駅 i と i+1 のあいだが i。上へ出す線は -1 ＝いちばん上の行）
   const spans = new Map();
@@ -153,27 +160,62 @@ function renderMap(groups) {
 
   // 駅ごとの停まる線の列（始まり・終わり・途中で停まる線）。駅のカプセルはこの列だけにかぶせ、通過する線はその外を通す
   const stops = map.stations.map(() => []);
-  for (const [l, segs] of spans) {
+  for (const [l] of spans) {
     const a = at(l.from);
     const b = l.up ? a : at(l.to);
     stops[a].push(l.col);
     stops[b].push(l.col);
     for (const v of l.via) if (at(v) > a && at(v) < b) stops[at(v)].push(l.col);
+  }
+  // 駅のカプセルの列の範囲（grid の列番号 [from, to)）。routemap.js の駅に left・right があればそちらを使う
+  const stopRange = map.stations.map((st, i) => {
+    const cols = stops[i];
+    const from = st.left ? st.left + 1 : cols.length ? Math.min(...cols) + 1 : 1;
+    const to = Math.max(from + 1, st.right ? st.right + 2 : cols.length ? Math.max(...cols) + 2 : n + 2);
+    return [from, to];
+  });
+
+  for (const [l, segs] of spans) {
+    const a = at(l.from);
+    const b = l.up ? a : at(l.to);
     // 駅の行：始まりは下半分（上へ出す線は上半分）、終わりは上半分、途中は停まるなら駅の下・通過なら駅の上に重ねる
     if (l.up) piece(l, stRow(a), "dl-track--top");
     else {
       piece(l, stRow(a), "dl-track--bottom");
       piece(l, stRow(b), "dl-track--top");
     }
-    for (let j = a + 1; j < b; j++) piece(l, stRow(j), l.via.includes(map.stations[j].name) ? "dl-track--stop" : "dl-track--pass");
     const k = labelAt.get(l);
-    for (const s of segs) if (s !== k) piece(l, l.up ? 1 : segRow(s), "dl-track--more");
+    // 名前を置く区間 k が始まりの駅より下にあるとき、途中の駅がすべて停車せずカプセルの外なら、
+    // 始まりの駅の直後（a）から k までを1つの箱でまたいで上端にくっつける（路線図全体の高さは増やさない）
+    let kFrom = k;
+    const kTo = k;
+    if (!l.up && k !== undefined && k > a) {
+      let clear = true;
+      for (let j = a + 1; j <= k; j++) {
+        const [from, to] = stopRange[j];
+        if (l.via.includes(map.stations[j].name) || (l.col + 1 >= from && l.col + 1 < to)) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) kFrom = a;
+    }
+    for (let j = a + 1; j < b; j++) {
+      if (kFrom !== undefined && j > kFrom && j <= kTo) continue;
+      piece(l, stRow(j), l.via.includes(map.stations[j].name) ? "dl-track--stop" : "dl-track--pass");
+    }
+    for (const s of segs) {
+      if (kFrom !== undefined && s >= kFrom && s <= kTo) continue;
+      piece(l, l.up ? 1 : segRow(s), "dl-track--more");
+    }
     if (k === undefined) continue;
     // 名前と印を置く区間
     const label = `<span class="dl-track__line"></span><span class="dl-track__mark" aria-hidden="true">${mark(l.st)}</span><span class="dl-track__label" aria-hidden="true">${esc(l.name)}</span>`;
     const attrs = `class="dl-track dl-track--${esc(l.line)} is-${esc(l.st)}${l.up ? " dl-track--up" : ""}" ${cell(
-      l.up ? 1 : segRow(k),
-      l.col + 1
+      l.up ? 1 : segRow(kFrom),
+      l.col + 1,
+      0,
+      !l.up && kTo > kFrom ? segRow(kTo) + 1 : 0
     )} data-line="${esc(l.name)}"`;
     cells.push(`<a ${attrs} href="#dl-${esc(l.id)}" aria-label="${esc(`${l.name}：${l.text}`)}">${label}</a>`);
   }
@@ -187,10 +229,7 @@ function renderMap(groups) {
       : "";
     // 停まる線の左端の列から右端の列まで（停まる線がなければ全部の列）。駅名と枝はカプセルの中に入れ、入りきらなければ右へ広げる。
     // 通過する線はカプセルの上に重なるので、駅名と枝は同じ形の箱をもう1枚、線より上に重ねて書く（下のカプセルの中身は大きさを決めるだけ）
-    // routemap.js の駅に left・right（列の番号）があれば、そちらを使う
-    const cols = stops[i];
-    const from = st.left ? st.left + 1 : cols.length ? Math.min(...cols) + 1 : 1;
-    const to = Math.max(from + 1, st.right ? st.right + 2 : cols.length ? Math.max(...cols) + 2 : n + 2);
+    const [from, to] = stopRange[i];
     const box = (cls, attrs = "") =>
       `<div class="dl-map__stop${branch ? " dl-map__stop--tall" : ""}${cls}" ${cell(row, from, to)}${attrs}>
           <span class="dl-map__station">${esc(st.name)}</span>${branch}
@@ -216,4 +255,18 @@ export function renderSummary(services) {
         .join("")}</p>
       <p class="dl-card__note">各社の情報を行き先ごとに並べたものです。線を押すと詳しいカードへ移ります。駅の上に重なっている線は、その駅には寄りません。北都交通は都心線・大谷地線、JR は快速エアポート・函館線（札幌近郊）・特急・新幹線で見ています。</p>
     </section>`;
+}
+
+// 路線図の破線・点線は行ごとの要素に分かれているので、行の高さが周期の倍数でないと継ぎ目で間隔がずれる。
+// 各行の要素に路線図の上端からの位置（--dash-y）を渡し、マスクの起点を路線図全体の上端にそろえる
+export function alignMap($root) {
+  for (const $map of $root.querySelectorAll(".dl-map")) {
+    const { top, height } = $map.getBoundingClientRect();
+    if (!height) continue; // タブで隠れているときは測れない（表示されたときに ResizeObserver から呼び直す）
+    for (const $t of $map.children) {
+      if ($t.classList.contains("dl-track")) {
+        $t.style.setProperty("--dash-y", `${top - $t.getBoundingClientRect().top}px`);
+      }
+    }
+  }
 }

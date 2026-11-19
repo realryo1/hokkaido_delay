@@ -430,8 +430,8 @@ button { font: inherit; color: inherit; }
   /* 中の重ね順（駅名・印・通過する線の z-index）を路線図の中で閉じる。閉じないと、スクロールしたとき上に貼り付く見出しより上に出る */
   isolation: isolate;
 }
-/* マスの置き場所は summary.js が style の --row・--col（駅のカプセルは --col-end まで）で渡す */
-.dl-map > .dl-track { grid-area: var(--row) / var(--col); }
+/* マスの置き場所は summary.js が style の --row・--col（複数行をまたぐ線は --row-end、駅のカプセルは --col-end まで）で渡す */
+.dl-map > .dl-track { grid-area: var(--row) / var(--col) / var(--row-end, auto); }
 .dl-map > .dl-map__stop { grid-area: var(--row) / var(--col) / auto / var(--col-end); }
 /* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
    線は列の真ん中に置くので、カプセルは停まる列の左端から右端までにして左右を対称にする。
@@ -463,8 +463,9 @@ button { font: inherit; color: inherit; }
 .dl-map__station { font-size: .95rem; font-weight: 700; line-height: 1.2; white-space: nowrap; }
 /* 駅の行の線：始まりは下半分、終わりは上半分、通過は駅の上に重ねる */
 .dl-map > .dl-track { align-self: stretch; }
-.dl-map > .dl-track--top { align-self: start; height: 50%; }
-.dl-map > .dl-track--bottom { align-self: end; height: 50%; --dir: 0deg; }
+/* 上半分・下半分は行の全体の高さで描き、clip-path で半分だけ見せる。破線の起点を行の上端にそろえ、列のあいだで位相がずれないようにする */
+.dl-map > .dl-track--top { align-self: stretch; height: auto; clip-path: inset(0 0 50% 0); }
+.dl-map > .dl-track--bottom { align-self: stretch; height: auto; clip-path: inset(50% 0 0 0); }
 .dl-map > .dl-track--pass { z-index: 2; }
 .dl-map > .dl-track--more { min-height: 16px; }
 /* 上へ出して消えていく線（小樽から日本海側へのフェリー）：印と名前は下（駅の側）に寄せ、線は上へ向かって薄くする */
@@ -521,6 +522,11 @@ button { font: inherit; color: inherit; }
 .is-suspended { --dash: var(--st-suspended-bg); --dash-on: 6px; --dash-step: 12px; }
 .is-offhours,
 .is-unknown { --dash: #bbb; --dash-on: 3px; --dash-step: 7px; }
+/* 路線図の破線の形（角丸の1区切り）。マスクの絵は1区切りの高さ（--dash-step）と長さ（--dash-on）に合わせて書いてある。変えたら両方直す */
+.is-delay { --dash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16'%3E%3Crect width='24' height='10' rx='5'/%3E%3C/svg%3E"); }
+.is-suspended { --dash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E%3Crect width='24' height='6' rx='3'/%3E%3C/svg%3E"); }
+.is-offhours,
+.is-unknown { --dash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 7'%3E%3Crect width='24' height='3' rx='1.5'/%3E%3C/svg%3E"); }
 :is(.is-delay, .is-suspended, .is-offhours, .is-unknown) .dl-track__line {
   background: repeating-linear-gradient(var(--dir, 180deg), var(--dash) 0 var(--dash-on), transparent var(--dash-on) var(--dash-step));
 }
@@ -543,12 +549,20 @@ button { font: inherit; color: inherit; }
 .dl-map > .dl-track { display: grid; justify-items: center; width: auto; }
 .dl-map > .dl-track > * { grid-area: 1 / 1; }
 .dl-map > .dl-track .dl-track__line { width: var(--band); margin-left: 0; }
-/* 路線図の中の破線・点線：上下の端（駅と接する側）が透明になって宙に浮いて見えないよう、上下端6pxは必ず塗る */
+/* 路線図の中の破線・点線：線は行ごとの区間に分かれるので、区間ごとに上下端を塗ると継ぎ目がまだらになる。
+   端は駅のカプセルの下に入るので、塗りは足さず破線だけにする。破線はマスクで角丸にする（色は --dash）。
+   行の高さが周期の倍数でないと継ぎ目で間隔がずれるため、summary.js の alignMap が路線図の上端からの位置を --dash-y に入れ、全行の起点をそろえる */
 .dl-map > .dl-track:is(.is-delay, .is-suspended, .is-offhours, .is-unknown) .dl-track__line {
-  background:
-    linear-gradient(var(--dash), var(--dash)) top / 100% 6px no-repeat,
-    linear-gradient(var(--dash), var(--dash)) bottom / 100% 6px no-repeat,
-    repeating-linear-gradient(var(--dir, 180deg), var(--dash) 0 var(--dash-on), transparent var(--dash-on) var(--dash-step));
+  background: var(--dash);
+  mask: var(--dash-mask) 0 var(--dash-y, 0px) / var(--band) var(--dash-step) repeat-y;
+}
+/* 上へ薄くなる線（上へ出す線）は、破線のマスクと上へ薄くするマスクを重ねる */
+.dl-map > .dl-track--up:is(.is-delay, .is-suspended, .is-offhours, .is-unknown) .dl-track__line {
+  mask:
+    var(--dash-mask) 0 var(--dash-y, 0px) / var(--band) var(--dash-step) repeat-y,
+    linear-gradient(to top, #000 45%, transparent) 0 0 / 100% 100% no-repeat;
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 .dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: 0; }
 /* 印は帯より少し大きく（--mark）、帯の左右にはみ出させる。状態の言葉（バッジ）は路線図には出さない（印で見せる） */

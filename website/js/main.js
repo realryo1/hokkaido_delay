@@ -2,7 +2,7 @@
 // Cloudflare Worker（worker/）が5分ごとに集めた JSON を1本だけ取得して描画する。事業者サイトへは直接アクセスしない。
 import { esc, hhmm } from "./util.js";
 import { renderCards, officialLinks, ui } from "./cards.js";
-import { renderSummary, SUMMARY } from "./summary.js";
+import { renderSummary, alignMap, SUMMARY } from "./summary.js";
 import { ROUTEMAP } from "./routemap.js";
 import { initLayout } from "./layout.js";
 import { initPlan } from "./plan.js";
@@ -61,6 +61,7 @@ function render(data) {
   lastServices = data.services || {};
   setNow(data.sample ? data.updated_at : null);
   $summary.innerHTML = renderSummary(lastServices);
+  alignMap($summary);
   // plan.js にシルバーフェリーの今の状況を渡す
   updatePlan(data);
   $sections.innerHTML = renderCards(lastServices);
@@ -139,6 +140,8 @@ $sections.addEventListener("change", (ev) => {
   if (last) render(last);
 });
 initLayout();
+new ResizeObserver(() => alignMap($summary)).observe($summary);
+document.fonts?.ready.then(() => alignMap($summary));
 // 画面を見ているあいだだけ1分ごとに更新し、戻ってきたときにもすぐ更新する
 setInterval(() => document.visibilityState === "visible" && load(), REFRESH_MS);
 document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && load());
@@ -149,6 +152,13 @@ load();
 if (local && params.has("edit")) {
   const editor = new URL("routemap-editor.js", import.meta.url).href;
   import(editor).then(({ startEditor }) =>
-    startEditor({ map: ROUTEMAP, summary: SUMMARY, rerender: () => ($summary.innerHTML = renderSummary(lastServices)) })
+    startEditor({
+      map: ROUTEMAP,
+      summary: SUMMARY,
+      rerender: () => {
+        $summary.innerHTML = renderSummary(lastServices);
+        alignMap($summary);
+      },
+    })
   );
 }
