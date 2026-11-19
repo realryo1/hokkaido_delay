@@ -9,14 +9,38 @@ function initSplit() {
   if (!$split) return;
   const $main = $split.parentElement;
   const KEY = "hokkaido-delay-board-w";
+  const $board = document.querySelector(".dl-board");
   const MIN_BOARD = 300;
   const MIN_SIDE = 260;
+  // 持ち手の上に来ると、左の列は持ち手の列の広がりの半分（6px）だけ狭くなる（delay.css の --split-extra）
+  const SPLIT_SHRINK = 6;
   // .dl の位置と幅はドラッグ中は変わらないので押した時に1回だけ測る
   let rect = null;
+  // 指定された幅（下限をかける前）。画面の幅や路線図が変わったときは、これを基に下限をかけ直す
+  let wanted = NaN;
   const gap = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gap")) || 10;
+  // 左の列の下限（px）：一番細い路線図（.dl-map）が縮まない幅。路線図の幅は、線の列の最小幅（--lead と --n × --pitch）の合計
+  const minBoardPx = () => {
+    let need = MIN_BOARD;
+    const boardW = $board.getBoundingClientRect().width;
+    for (const $map of $board.querySelectorAll(".dl-map")) {
+      const mapW = $map.getBoundingClientRect().width;
+      if (!mapW) continue; // 畳まれていて描かれていない路線図は数えない
+      const cs = getComputedStyle($map);
+      const n = parseFloat(cs.getPropertyValue("--n")) || 0;
+      const pitch = parseFloat(cs.getPropertyValue("--pitch")) || 0;
+      const lead = parseFloat(cs.getPropertyValue("--lead")) || 0;
+      // 路線図の外側（カードや列の余白）。路線図の幅は列の幅と同じなので、余白を足すと列の幅になる
+      need = Math.max(need, lead + n * pitch + (boardW - mapW));
+    }
+    return need;
+  };
   const setW = (pct, save) => {
     const total = rect?.width || $main.clientWidth || window.innerWidth;
-    const w = Math.min(100 - ((MIN_SIDE + gap()) / total) * 100, Math.max((MIN_BOARD / total) * 100, pct));
+    const minPct = ((minBoardPx() + SPLIT_SHRINK) / total) * 100;
+    const w = Math.min(100 - ((MIN_SIDE + gap()) / total) * 100, Math.max(minPct, pct));
+    // 決めた（保存する）幅は、下限で止まった後の幅にする。ドラッグ中だけ指定の幅を残す
+    wanted = save ? w : pct;
     $main.style.setProperty("--board-w", `${w}%`);
     $split.setAttribute("aria-valuenow", String(Math.round(w)));
     if (!save) return;
@@ -68,8 +92,18 @@ function initSplit() {
   $split.addEventListener("pointerup", end);
   $split.addEventListener("pointercancel", end);
   $split.addEventListener("dblclick", () => setW(50, true));
-  // 画面の幅が変わったら（端末を回したときなど）、下限をかけ直す
-  window.addEventListener("resize", () => setW(parseFloat($main.style.getPropertyValue("--board-w")), false));
+  // 画面の幅が変わったとき・路線図が描かれて幅が変わったとき・中身の高さが変わったときは、指定の幅に下限をかけ直す（1フレームに1回）
+  let fitRaf = 0;
+  const fit = () => {
+    if (fitRaf) return;
+    fitRaf = requestAnimationFrame(() => {
+      fitRaf = 0;
+      setW(wanted, false);
+    });
+  };
+  window.addEventListener("resize", fit);
+  const observer = new ResizeObserver(fit);
+  for (const $el of [$board, document.getElementById("summary"), document.getElementById("sections")]) if ($el) observer.observe($el);
   $split.addEventListener("keydown", (ev) => {
     const step = { ArrowLeft: -2, ArrowRight: 2 }[ev.key];
     if (!step) return;

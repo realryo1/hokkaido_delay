@@ -418,11 +418,13 @@ button { font: inherit; color: inherit; }
    駅（.dl-map__stop）は停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。線（.dl-track）は行ごとに置く太い帯で、名前は帯の中に縦書きで。状態は帯の模様と印（○△×）で示す */
 /* 線の列はカードの幅いっぱいに均等に広げる。線は太い帯（--band）で、名前と状態は帯の中に縦書きで重ねる */
 .dl-map {
+  /* --lead（左の余白。なし）と --pitch（線の列の最小幅）は js/layout.js が読み、左の列の下限にする。線は列の真ん中に置く */
+  --lead: 0px;
   --pitch: 34px;
   --band: 24px;
   --mark: 32px;
   display: grid;
-  grid-template-columns: 8px repeat(var(--n), minmax(var(--pitch), 1fr));
+  grid-template-columns: var(--lead) repeat(var(--n), minmax(var(--pitch), 1fr));
   align-items: center;
   margin: 4px 0 18px;
   /* 中の重ね順（駅名・印・通過する線の z-index）を路線図の中で閉じる。閉じないと、スクロールしたとき上に貼り付く見出しより上に出る */
@@ -432,7 +434,7 @@ button { font: inherit; color: inherit; }
 .dl-map > .dl-track { grid-area: var(--row) / var(--col); }
 .dl-map > .dl-map__stop { grid-area: var(--row) / var(--col) / auto / var(--col-end); }
 /* 駅：停まる線の列をまたぐ横長のカプセルで、中に駅名を書く。駅の下を通る線より上、通過する線より下に描く。
-   帯（24px）の左右に余裕を持たせて、角丸の外に帯の角がはみ出さないようにする。
+   線は列の真ん中に置くので、カプセルは停まる列の左端から右端までにして左右を対称にする。
    駅名が入りきらないときは右へ広げる */
 .dl-map__stop {
   position: relative;
@@ -442,9 +444,9 @@ button { font: inherit; color: inherit; }
   align-items: center;
   justify-content: center;
   width: max-content;
-  min-width: calc(100% + 8px);
+  min-width: 100%;
   min-height: 30px;
-  margin: 0 0 0 -8px;
+  margin: 0;
   padding: 2px 10px;
   border: 3px solid var(--col-ink);
   border-radius: 999px;
@@ -538,7 +540,7 @@ button { font: inherit; color: inherit; }
 
 /* 路線図の中の線（札幌の地下鉄の横の短い線は上のまま）：帯・印・名前を1つのマスに重ね、帯の中に印と縦書きの名前を入れる。
    名前の部分は会社の色で塗りつぶして白い字にし、帯の文字のない部分で状態の模様（破線など）を見せる */
-.dl-map > .dl-track { display: grid; justify-items: start; width: auto; }
+.dl-map > .dl-track { display: grid; justify-items: center; width: auto; }
 .dl-map > .dl-track > * { grid-area: 1 / 1; }
 .dl-map > .dl-track .dl-track__line { width: var(--band); margin-left: 0; }
 /* 路線図の中の破線・点線：上下の端（駅と接する側）が透明になって宙に浮いて見えないよう、上下端6pxは必ず塗る */
@@ -548,7 +550,7 @@ button { font: inherit; color: inherit; }
     linear-gradient(var(--dash), var(--dash)) bottom / 100% 6px no-repeat,
     repeating-linear-gradient(var(--dir, 180deg), var(--dash) 0 var(--dash-on), transparent var(--dash-on) var(--dash-step));
 }
-.dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: calc((var(--band) - 4px) / 2); }
+.dl-map > .dl-track.is-plain .dl-track__line { width: 4px; margin-left: 0; }
 /* 印は帯より少し大きく（--mark）、帯の左右にはみ出させる。状態の言葉（バッジ）は路線図には出さない（印で見せる） */
 .dl-map > .dl-track .dl-track__mark {
   position: relative;
@@ -561,7 +563,7 @@ button { font: inherit; color: inherit; }
   height: var(--mark);
   padding: 3px;
   font-size: 1rem;
-  margin: 4px 0 0 calc((var(--band) - var(--mark)) / 2);
+  margin: 4px 0 0;
 }
 /* 上へ出す線は mask-image で薄くしていて、それだけで文字より上に描かれてしまうので、名前の帯を線より上に置く */
 .dl-map > .dl-track .dl-track__label {
@@ -576,7 +578,7 @@ button { font: inherit; color: inherit; }
 }
 /* 縦書きでは下線が字の右に縦線として出て紛らわしいので、路線図の線にはマウスを載せても下線を引かない */
 .dl-map > .dl-track:hover .dl-track__label { text-decoration: none; }
-.dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px calc((var(--band) - var(--mark)) / 2); }
+.dl-map > .dl-track--up .dl-track__mark { align-self: end; margin: 0 0 4px; }
 .dl-map > .dl-track--up .dl-track__label { align-self: end; padding: 8px 0 calc(var(--mark) + 14px); }
 .dl-track--nanboku { --line: var(--line-nanboku); }
 .dl-track--tozai { --line: var(--line-tozai); }
