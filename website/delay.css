@@ -953,19 +953,19 @@ tr.dl-air--FDA > td.dl-airname {
   table-layout: fixed;
 }
 .dl-table--flights th,
-.dl-table--flights td { padding: 6px 4px; }
+.dl-table--flights td { padding: 6px 4px; text-align: center; }
 .dl-table--flights thead th:first-child { padding-left: 8px; }
 .dl-table--flights th:last-child,
 .dl-table--flights td:last-child { padding-right: 8px; }
 .dl-table--flights th:nth-child(2),
 .dl-table--flights td:nth-child(2) { padding-left: 10px; padding-right: 6px; }
 .dl-table--flights td { width: auto; }
-.dl-col-air { width: 22%; }
-.dl-col-no { width: 18%; }
-.dl-col-place { width: 16%; }
+.dl-col-air { width: 18%; }
+.dl-col-no { width: 16%; }
+.dl-col-place { width: 22%; }
 .dl-col-time { width: 11%; }
-.dl-col-est { width: 18%; }
-.dl-col-state { width: 15%; }
+.dl-col-est { width: 20%; }
+.dl-col-state { width: 13%; }
 .dl-table--flights td:nth-child(n+4) { white-space: nowrap; }
 .dl-table--flights small { margin-left: 2px; font-size: .85em; opacity: .8; }
 .dl-table--flights .dl-badge { padding: 1px 6px; font-size: .88em; }
